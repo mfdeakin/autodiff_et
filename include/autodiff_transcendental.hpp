@@ -20,8 +20,7 @@ template <typename lhs_expr_t_, typename rhs_expr_t_> class pow;
 
 // Roots, expoonents, logarithms
 
-template <typename expr_t_>
-class Sqrt : public unary_op<expr_t_>, public expr_ops<Sqrt<expr_t_>> {
+template <typename expr_t_> class Sqrt : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -62,8 +61,7 @@ public:
   }
 };
 
-template <typename expr_t_>
-class Cbrt : public unary_op<expr_t_>, public expr_ops<Cbrt<expr_t_>> {
+template <typename expr_t_> class Cbrt : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -104,8 +102,7 @@ public:
   }
 };
 
-template <typename expr_t_>
-class Exp : public unary_op<expr_t_>, public expr_ops<Exp<expr_t_>> {
+template <typename expr_t_> class Exp : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -146,8 +143,7 @@ public:
   }
 };
 
-template <typename expr_t_>
-class Log : public unary_op<expr_t_>, public expr_ops<Log<expr_t_>> {
+template <typename expr_t_> class Log : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -190,8 +186,7 @@ public:
 
 // Trigonometric functions
 
-template <typename expr_t_>
-class Sin : public unary_op<expr_t_>, public expr_ops<Sin<expr_t_>> {
+template <typename expr_t_> class Sin : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -232,8 +227,7 @@ public:
   }
 };
 
-template <typename expr_t_>
-class Cos : public unary_op<expr_t_>, public expr_ops<Cos<expr_t_>> {
+template <typename expr_t_> class Cos : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -275,8 +269,7 @@ public:
   }
 };
 
-template <typename expr_t_>
-class Tan : public unary_op<expr_t_>, public expr_ops<Tan<expr_t_>> {
+template <typename expr_t_> class Tan : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -319,8 +312,7 @@ public:
 
 // Inverse trigonometric functions
 
-template <typename expr_t_>
-class Asin : public unary_op<expr_t_>, public expr_ops<Asin<expr_t_>> {
+template <typename expr_t_> class Asin : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -361,8 +353,7 @@ public:
   }
 };
 
-template <typename expr_t_>
-class Acos : public unary_op<expr_t_>, public expr_ops<Acos<expr_t_>> {
+template <typename expr_t_> class Acos : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -403,8 +394,7 @@ public:
   }
 };
 
-template <typename expr_t_>
-class Atan : public unary_op<expr_t_>, public expr_ops<Atan<expr_t_>> {
+template <typename expr_t_> class Atan : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -447,8 +437,7 @@ public:
 
 // x ^ y
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class Pow : public binary_op<lhs_expr_t_, rhs_expr_t_>,
-            public expr_ops<Pow<lhs_expr_t_, rhs_expr_t_>> {
+class Pow : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using expr_t = typename bop::expr_t;

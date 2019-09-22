@@ -51,66 +51,49 @@ template <typename lhs_expr_t, typename rhs_expr_t> struct binary_expr_domain {
 
 // Everything that is an expression should define an alias called "space"
 // indicating the domain the expression acts on
-// Expressions should also publically inherit from expr or expr_ops
+// Expressions should also publically inherit from expr
 class expr {};
 
-template <typename sub_expr_t> class expr_ops : public expr {
-public:
-  constexpr negation<sub_expr_t> operator-() {
-    return negation<sub_expr_t>(*static_cast<const sub_expr_t *>(this));
-  }
-
-  template <typename rhs_expr_t>
-  constexpr addition<sub_expr_t, rhs_expr_t>
-  operator+(const rhs_expr_t rhs) const {
-    return addition<sub_expr_t, rhs_expr_t>(
-        *static_cast<const sub_expr_t *>(this), rhs);
-  }
-
-  template <typename rhs_expr_t>
-  constexpr subtraction<sub_expr_t, rhs_expr_t>
-  operator-(const rhs_expr_t rhs) const {
-    return subtraction<sub_expr_t, rhs_expr_t>(
-        *static_cast<const sub_expr_t *>(this), rhs);
-  }
-
-  template <typename rhs_expr_t>
-  constexpr multiplication<sub_expr_t, rhs_expr_t>
-  operator*(const rhs_expr_t rhs) const {
-    return multiplication<sub_expr_t, rhs_expr_t>(
-        *static_cast<const sub_expr_t *>(this), rhs);
-  }
-
-  template <typename rhs_expr_t>
-  constexpr division<sub_expr_t, rhs_expr_t>
-  operator/(const rhs_expr_t rhs) const {
-    return division<sub_expr_t, rhs_expr_t>(
-        *static_cast<const sub_expr_t *>(this), rhs);
-  }
-};
-
-template <typename rhs_expr_t>
-constexpr addition<typename rhs_expr_t::space, rhs_expr_t>
-operator+(const typename rhs_expr_t::space c, const rhs_expr_t e) {
-  return addition<typename rhs_expr_t::space, rhs_expr_t>(c, e);
+template <typename sub_expr_t>
+constexpr std::enable_if_t<std::is_base_of_v<expr, sub_expr_t>,
+                           negation<sub_expr_t>>
+operator-(const sub_expr_t expr) {
+  return negation<sub_expr_t>(expr);
 }
 
-template <typename rhs_expr_t>
-constexpr subtraction<typename rhs_expr_t::space, rhs_expr_t>
-operator-(const typename rhs_expr_t::space c, const rhs_expr_t e) {
-  return subtraction<typename rhs_expr_t::space, rhs_expr_t>(c, e);
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr bool is_valid_binary_expr =
+    std::is_same_v<typename expr_domain<lhs_expr_t>::space,
+                   typename expr_domain<rhs_expr_t>::space> &&
+    (std::is_base_of_v<expr, lhs_expr_t> ||
+     std::is_base_of_v<expr, rhs_expr_t>);
+
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           addition<lhs_expr_t, rhs_expr_t>>
+operator+(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+  return addition<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
-template <typename rhs_expr_t>
-constexpr multiplication<typename rhs_expr_t::space, rhs_expr_t>
-operator*(const typename rhs_expr_t::space c, const rhs_expr_t e) {
-  return multiplication<typename rhs_expr_t::space, rhs_expr_t>(c, e);
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           subtraction<lhs_expr_t, rhs_expr_t>>
+operator-(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+  return subtraction<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
-template <typename rhs_expr_t>
-constexpr division<typename rhs_expr_t::space, rhs_expr_t>
-operator/(const typename rhs_expr_t::space c, const rhs_expr_t e) {
-  return division<typename rhs_expr_t::space, rhs_expr_t>(c, e);
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           multiplication<lhs_expr_t, rhs_expr_t>>
+operator*(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+  return multiplication<lhs_expr_t, rhs_expr_t>(lhs, rhs);
+}
+
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           division<lhs_expr_t, rhs_expr_t>>
+operator/(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+  return division<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 // To implement this, I'm assuming that all variables have derivatives taken wrt
@@ -130,7 +113,7 @@ operator/(const typename rhs_expr_t::space c, const rhs_expr_t e) {
 // d^2u/dxidxj
 // In the cases where this isn't true, you can use the subs method, which only
 // replaces the specified variable with a constant; this
-template <typename space_> class variable : public expr_ops<variable<space_>> {
+template <typename space_> class variable : public expr {
 public:
   using space = space_;
 
@@ -192,7 +175,7 @@ protected:
 };
 
 template <typename expr_t_>
-class negation : public unary_op<expr_t_>, public expr_ops<negation<expr_t_>> {
+class negation : public unary_op<expr_t_>, public expr {
 public:
   using uop = unary_op<expr_t_>;
   using expr_t = typename uop::expr_t;
@@ -250,8 +233,7 @@ protected:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class addition : public binary_op<lhs_expr_t_, rhs_expr_t_>,
-                 public expr_ops<addition<lhs_expr_t_, rhs_expr_t_>> {
+class addition : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
@@ -331,8 +313,7 @@ public:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class subtraction : public binary_op<lhs_expr_t_, rhs_expr_t_>,
-                    public expr_ops<subtraction<lhs_expr_t_, rhs_expr_t_>> {
+class subtraction : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
@@ -411,9 +392,7 @@ public:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class multiplication
-    : public binary_op<lhs_expr_t_, rhs_expr_t_>,
-      public expr_ops<multiplication<lhs_expr_t_, rhs_expr_t_>> {
+class multiplication : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
@@ -493,8 +472,7 @@ public:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class division : public binary_op<lhs_expr_t_, rhs_expr_t_>,
-                 public expr_ops<division<lhs_expr_t_, rhs_expr_t_>> {
+class division : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
