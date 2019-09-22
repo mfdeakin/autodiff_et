@@ -29,15 +29,15 @@ TEST(polynomial_eval, autodiff) {
 
     constexpr double c = -20.0;
     addition<
-        addition<addition<variable<double>,
+        subtraction<addition<variable<double>,
                           multiplication<variable<double>, variable<double>>>,
                  double>,
         variable<double>>
-        x_quadratic = x + x * x + c + x;
+        x_quadratic = x + x * x - c + x;
     const double e4 = x_quadratic.eval(x.id(), rval);
-    EXPECT_EQ(e4, rval + rval * rval + c + rval);
+    EXPECT_EQ(e4, rval + rval * rval - c + rval);
     const double e5 = x_quadratic.eval(x.id(), 0.5);
-    EXPECT_EQ(e5, 0.75 + c + 0.5);
+    EXPECT_EQ(e5, 0.75 - c + 0.5);
     EXPECT_EQ(x_quadratic.deriv().eval(x.deriv_id(0), 1.0), 0.0);
     EXPECT_EQ(x_quadratic.deriv().eval(x.deriv_id(1), 1.0), 2.0);
   }

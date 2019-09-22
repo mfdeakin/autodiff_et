@@ -32,7 +32,7 @@ static constexpr id_t max_derivs = 256;
 static constexpr id_t max_id = std::numeric_limits<id_t>::max() / max_derivs;
 static constexpr id_t min_id = 1;
 
-// This determines the domain/space of the variables we're working with
+// This determines the space of the variables we're working with
 template <typename expr_t, typename = void> struct expr_domain {
   using space = expr_t;
 };
@@ -42,6 +42,8 @@ struct expr_domain<expr_t, std::void_t<typename expr_t::space>> {
   using space = typename expr_t::space;
 };
 
+// This determines the space of the variables in the binary expression. If they
+// are not the same, compilation is halted
 template <typename lhs_expr_t, typename rhs_expr_t> struct binary_expr_domain {
   static_assert(std::is_same_v<typename expr_domain<lhs_expr_t>::space,
                                typename expr_domain<rhs_expr_t>::space>,
@@ -68,31 +70,60 @@ constexpr bool is_valid_binary_expr =
     (std::is_base_of_v<expr, lhs_expr_t> ||
      std::is_base_of_v<expr, rhs_expr_t>);
 
+// Implement the basic binary expression operations
 template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
                            addition<lhs_expr_t, rhs_expr_t>>
-operator+(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+operator+(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
   return addition<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
                            subtraction<lhs_expr_t, rhs_expr_t>>
-operator-(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+operator-(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
   return subtraction<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
                            multiplication<lhs_expr_t, rhs_expr_t>>
-operator*(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+operator*(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
   return multiplication<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
                            division<lhs_expr_t, rhs_expr_t>>
-operator/(const lhs_expr_t lhs, const rhs_expr_t rhs) {
+operator/(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
+  return division<lhs_expr_t, rhs_expr_t>(lhs, rhs);
+}
+
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           addition<lhs_expr_t, rhs_expr_t>>
+operator+(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
+  return addition<lhs_expr_t, rhs_expr_t>(lhs, rhs);
+}
+
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           subtraction<lhs_expr_t, rhs_expr_t>>
+operator-(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
+  return subtraction<lhs_expr_t, rhs_expr_t>(lhs, rhs);
+}
+
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           multiplication<lhs_expr_t, rhs_expr_t>>
+operator*(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
+  return multiplication<lhs_expr_t, rhs_expr_t>(lhs, rhs);
+}
+
+template <typename lhs_expr_t, typename rhs_expr_t>
+constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
+                           division<lhs_expr_t, rhs_expr_t>>
+operator/(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
   return division<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
@@ -117,7 +148,7 @@ template <typename space_> class variable : public expr {
 public:
   using space = space_;
 
-  explicit constexpr variable(const id_t &id) : id_(id) {}
+  explicit constexpr variable(const id_t &&id) : id_(id) {}
 
   constexpr variable deriv() const { return variable(deriv_id(1)); }
 
@@ -181,7 +212,8 @@ public:
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
-  constexpr explicit negation(expr_t val) : uop(val) {}
+  constexpr explicit negation(const expr_t &val) : uop(val) {}
+  constexpr explicit negation(const expr_t &&val) : uop(val) {}
 
   constexpr space eval(const id_t eval_id, space v) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -214,17 +246,22 @@ public:
       return space(0);
     }
   }
+
+  constexpr expr_t operator-() const { return this->val_; }
 };
 
 // Primitive Binary Operation
-template <typename lhs_expr_t_, typename rhs_expr_t_> class binary_op {
+template <typename lhs_expr_t_, typename rhs_expr_t_>
+class binary_op : public expr {
 public:
   using lhs_expr_t = lhs_expr_t_;
   using rhs_expr_t = rhs_expr_t_;
 
   using space = typename binary_expr_domain<lhs_expr_t_, rhs_expr_t_>::space;
 
-  constexpr binary_op(lhs_expr_t lhs_, rhs_expr_t rhs_)
+  constexpr binary_op(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
+      : lhs(lhs_), rhs(rhs_) {}
+  constexpr binary_op(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
       : lhs(lhs_), rhs(rhs_) {}
 
 protected:
@@ -233,7 +270,7 @@ protected:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class addition : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
+class addition : public binary_op<lhs_expr_t_, rhs_expr_t_> {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
@@ -241,7 +278,10 @@ public:
   using this_t = addition<lhs_expr_t, rhs_expr_t>;
   using space = typename bop::space;
 
-  constexpr addition(lhs_expr_t lhs_, rhs_expr_t rhs_) : bop(lhs_, rhs_) {}
+  constexpr addition(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
+      : bop(lhs_, rhs_) {}
+  constexpr addition(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+      : bop(lhs_, rhs_) {}
 
   constexpr space eval(const id_t eval_id, space v) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
@@ -313,14 +353,17 @@ public:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class subtraction : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
+class subtraction : public binary_op<lhs_expr_t_, rhs_expr_t_> {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
   using rhs_expr_t = typename bop::rhs_expr_t;
   using space = typename bop::space;
 
-  constexpr subtraction(lhs_expr_t lhs_, rhs_expr_t rhs_) : bop(lhs_, rhs_) {}
+  constexpr subtraction(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
+      : bop(lhs_, rhs_) {}
+  constexpr subtraction(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+      : bop(lhs_, rhs_) {}
 
   constexpr space eval(const id_t eval_id, space v) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
@@ -392,14 +435,16 @@ public:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class multiplication : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
+class multiplication : public binary_op<lhs_expr_t_, rhs_expr_t_> {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
   using rhs_expr_t = typename bop::rhs_expr_t;
   using space = typename bop::space;
 
-  constexpr multiplication(lhs_expr_t lhs_, rhs_expr_t rhs_)
+  constexpr multiplication(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
+      : bop(lhs_, rhs_) {}
+  constexpr multiplication(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
       : bop(lhs_, rhs_) {}
 
   constexpr space eval(const id_t eval_id, space v) const {
@@ -472,14 +517,17 @@ public:
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class division : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
+class division : public binary_op<lhs_expr_t_, rhs_expr_t_> {
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
   using lhs_expr_t = typename bop::lhs_expr_t;
   using rhs_expr_t = typename bop::rhs_expr_t;
   using space = typename bop::space;
 
-  constexpr division(lhs_expr_t lhs_, rhs_expr_t rhs_) : bop(lhs_, rhs_) {}
+  constexpr division(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
+      : bop(lhs_, rhs_) {}
+  constexpr division(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+      : bop(lhs_, rhs_) {}
 
   constexpr space eval(const id_t eval_id, space v) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {

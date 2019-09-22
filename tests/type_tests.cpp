@@ -18,6 +18,12 @@ static_assert(
         binary_expr_domain<variable<double>, variable<double>>::space, double>,
     "expr_domain not working");
 
+// Checks on the basic expressions
+static_assert(
+    std::is_same_v<decltype(-negation<variable<double>>(variable<double>(0))),
+                   variable<double>>,
+    "Negation isn't cancelling");
+
 // Check that the types of the derivatives are correct and efficient
 // variables derivatives
 static_assert(
