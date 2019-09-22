@@ -28,11 +28,11 @@ TEST(polynomial_eval, autodiff) {
     EXPECT_EQ(e2, rval * rval);
 
     constexpr double c = -20.0;
-    addition<
-        subtraction<addition<variable<double>,
+    addition<subtraction<
+                 addition<variable<double>,
                           multiplication<variable<double>, variable<double>>>,
                  double>,
-        variable<double>>
+             variable<double>>
         x_quadratic = x + x * x - c + x;
     const double e4 = x_quadratic.eval(x.id(), rval);
     EXPECT_EQ(e4, rval + rval * rval - c + rval);

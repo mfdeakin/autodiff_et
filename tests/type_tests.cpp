@@ -18,6 +18,24 @@ static_assert(
         binary_expr_domain<variable<double>, variable<double>>::space, double>,
     "expr_domain not working");
 
+// Checks that is_valid_binary_expr is working on some basic types
+static_assert(!is_valid_binary_expr<double, double, std::plus<>>,
+              "is_valid_binary_expr let non-expressions through");
+static_assert(!is_valid_binary_expr<double, double, std::minus<>>,
+              "is_valid_binary_expr let non-expressions through");
+static_assert(!is_valid_binary_expr<double, double, std::multiplies<>>,
+              "is_valid_binary_expr let non-expressions through");
+static_assert(!is_valid_binary_expr<double, double, std::divides<>>,
+              "is_valid_binary_expr let non-expressions through");
+
+static_assert(is_valid_binary_expr<variable<double>, double, std::plus<>>,
+              "is_valid_binary_expr failed on a valid expression");
+static_assert(is_valid_binary_expr<double, variable<double>, std::plus<>>,
+              "is_valid_binary_expr failed on a valid expression");
+static_assert(
+    is_valid_binary_expr<variable<double>, variable<double>, std::plus<>>,
+    "is_valid_binary_expr failed on a valid expression");
+
 // Checks on the basic expressions
 static_assert(
     std::is_same_v<decltype(-negation<variable<double>>(variable<double>(0))),

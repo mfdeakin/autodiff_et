@@ -63,66 +63,77 @@ operator-(const sub_expr_t expr) {
   return negation<sub_expr_t>(expr);
 }
 
-template <typename lhs_expr_t, typename rhs_expr_t>
+// is_valid_binary_expr checks that at least one of the sub-expressions is an
+// expression, and that the operator is defined when applied to the spaces of
+// the expressions
+template <typename lhs_expr_t, typename rhs_expr_t, typename bin_op>
 constexpr bool is_valid_binary_expr =
-    std::is_same_v<typename expr_domain<lhs_expr_t>::space,
-                   typename expr_domain<rhs_expr_t>::space> &&
+    std::is_invocable_v<bin_op, typename expr_domain<lhs_expr_t>::space,
+                        typename expr_domain<rhs_expr_t>::space> &&
     (std::is_base_of_v<expr, lhs_expr_t> ||
      std::is_base_of_v<expr, rhs_expr_t>);
 
 // Implement the basic binary expression operations
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           addition<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::plus<>>,
+    addition<lhs_expr_t, rhs_expr_t>>
 operator+(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
   return addition<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           subtraction<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::minus<>>,
+    subtraction<lhs_expr_t, rhs_expr_t>>
 operator-(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
   return subtraction<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           multiplication<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::multiplies<>>,
+    multiplication<lhs_expr_t, rhs_expr_t>>
 operator*(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
   return multiplication<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           division<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::divides<>>,
+    division<lhs_expr_t, rhs_expr_t>>
 operator/(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
   return division<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           addition<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::plus<>>,
+    addition<lhs_expr_t, rhs_expr_t>>
 operator+(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
   return addition<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           subtraction<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::minus<>>,
+    subtraction<lhs_expr_t, rhs_expr_t>>
 operator-(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
   return subtraction<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           multiplication<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::multiplies<>>,
+    multiplication<lhs_expr_t, rhs_expr_t>>
 operator*(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
   return multiplication<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
 template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<is_valid_binary_expr<lhs_expr_t, rhs_expr_t>,
-                           division<lhs_expr_t, rhs_expr_t>>
+constexpr std::enable_if_t<
+    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::divides<>>,
+    division<lhs_expr_t, rhs_expr_t>>
 operator/(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
   return division<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
