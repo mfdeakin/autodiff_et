@@ -1,7 +1,63 @@
 
+#ifndef AUTODIFF_TRANSCENDENTAL_HPP
+#define AUTODIFF_TRANSCENDENTAL_HPP
+
 #include "autodiff.hpp"
 
+#include <cmath>
+#include <functional>
+
 namespace auto_diff {
+
+namespace transcendental {
+
+template <typename space> struct sqrt_function {
+  constexpr space operator()(const space &x) const { return std::sqrt(x); }
+};
+
+template <typename space> struct cbrt_function {
+  constexpr space operator()(const space &x) const { return std::cbrt(x); }
+};
+
+template <typename space> struct exp_function {
+  constexpr space operator()(const space &x) const { return std::exp(x); }
+};
+
+template <typename space> struct log_function {
+  constexpr space operator()(const space &x) const { return std::log(x); }
+};
+
+template <typename space> struct sin_function {
+  constexpr space operator()(const space &x) const { return std::sin(x); }
+};
+
+template <typename space> struct cos_function {
+  constexpr space operator()(const space &x) const { return std::cos(x); }
+};
+
+template <typename space> struct tan_function {
+  constexpr space operator()(const space &x) const { return std::tan(x); }
+};
+
+template <typename space> struct asin_function {
+  constexpr space operator()(const space &x) const { return std::asin(x); }
+};
+
+template <typename space> struct acos_function {
+  constexpr space operator()(const space &x) const { return std::acos(x); }
+};
+
+template <typename space> struct atan_function {
+  constexpr space operator()(const space &x) const { return std::atan(x); }
+};
+
+template <typename space> struct pow_function {
+  constexpr space operator()(const space &x, const space &y) const {
+    return std::pow(x, y);
+  }
+};
+
+} // namespace transcendental
 
 template <typename expr_t_> class Sqrt;
 template <typename expr_t_> class Cbrt;
@@ -16,41 +72,21 @@ template <typename expr_t_> class Asin;
 template <typename expr_t_> class Acos;
 template <typename expr_t_> class Atan;
 
-template <typename lhs_expr_t_, typename rhs_expr_t_> class pow;
+template <typename lhs_expr_t_, typename rhs_expr_t_> class Pow;
 
 // Roots, expoonents, logarithms
 
-template <typename expr_t_> class Sqrt : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Sqrt
+    : public unary_op<expr_t_,
+                      transcendental::sqrt_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::sqrt_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
   constexpr explicit Sqrt(expr_t val) : uop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return sqrt(this->val_.eval(eval_id, v));
-    } else {
-      return sqrt(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return sqrt(this->val_.eval(values));
-    } else {
-      return sqrt(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Sqrt(this->val_.subs(eval_id, v));
-    } else {
-      return sqrt(this->val_);
-    }
-  }
 
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -61,37 +97,17 @@ public:
   }
 };
 
-template <typename expr_t_> class Cbrt : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Cbrt
+    : public unary_op<expr_t_,
+                      transcendental::cbrt_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::cbrt_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
   constexpr explicit Cbrt(expr_t val) : uop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return cbrt(this->val_.eval(eval_id, v));
-    } else {
-      return cbrt(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return cbrt(this->val_.eval(values));
-    } else {
-      return cbrt(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Cbrt(this->val_.subs(eval_id, v));
-    } else {
-      return cbrt(this->val_);
-    }
-  }
 
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -102,29 +118,14 @@ public:
   }
 };
 
-template <typename expr_t_> class Exp : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Exp : public unary_op<expr_t_, typename expr_domain<expr_t_>::space> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop = unary_op<expr_t_, typename expr_domain<expr_t_>::space>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
   constexpr explicit Exp(expr_t val) : uop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return exp(this->val_.eval(eval_id, v));
-    } else {
-      return exp(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return exp(this->val_.eval(values));
-    } else {
-      return exp(this->val_);
-    }
-  }
 
   constexpr auto subs(const id_t eval_id, const space v) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -143,9 +144,13 @@ public:
   }
 };
 
-template <typename expr_t_> class Log : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Log
+    : public unary_op<expr_t_,
+                      transcendental::log_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::log_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
@@ -186,9 +191,13 @@ public:
 
 // Trigonometric functions
 
-template <typename expr_t_> class Sin : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Sin
+    : public unary_op<expr_t_,
+                      transcendental::sin_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::sin_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
@@ -227,9 +236,13 @@ public:
   }
 };
 
-template <typename expr_t_> class Cos : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Cos
+    : public unary_op<expr_t_,
+                      transcendental::cos_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::cos_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
@@ -269,9 +282,13 @@ public:
   }
 };
 
-template <typename expr_t_> class Tan : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Tan
+    : public unary_op<expr_t_,
+                      transcendental::tan_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::tan_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
@@ -312,9 +329,13 @@ public:
 
 // Inverse trigonometric functions
 
-template <typename expr_t_> class Asin : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Asin
+    : public unary_op<expr_t_,
+                      transcendental::asin_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::asin_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
@@ -353,9 +374,13 @@ public:
   }
 };
 
-template <typename expr_t_> class Acos : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Acos
+    : public unary_op<expr_t_,
+                      transcendental::acos_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::acos_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
@@ -394,9 +419,13 @@ public:
   }
 };
 
-template <typename expr_t_> class Atan : public unary_op<expr_t_>, public expr {
+template <typename expr_t_>
+class Atan
+    : public unary_op<expr_t_,
+                      transcendental::atan_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_>;
+  using uop =
+      unary_op<expr_t_, transcendental::atan_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
@@ -437,9 +466,12 @@ public:
 
 // x ^ y
 template <typename lhs_expr_t_, typename rhs_expr_t_>
-class Pow : public binary_op<lhs_expr_t_, rhs_expr_t_>, public expr {
+class Pow
+    : public binary_op<lhs_expr_t_, rhs_expr_t_,
+                       transcendental::pow_function<expr_domain<lhs_expr_t_>>> {
 public:
-  using bop = binary_op<lhs_expr_t_, rhs_expr_t_>;
+  using bop = binary_op<lhs_expr_t_, rhs_expr_t_,
+                        transcendental::pow_function<expr_domain<lhs_expr_t_>>>;
   using expr_t = typename bop::expr_t;
   using space = typename bop::space;
 
@@ -480,3 +512,5 @@ public:
 };
 
 } // namespace auto_diff
+
+#endif // AUTODIFF_TRANSCENDENTAL_HPP

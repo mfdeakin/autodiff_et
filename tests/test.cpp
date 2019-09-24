@@ -20,6 +20,9 @@ TEST(polynomial_eval, autodiff) {
   const variable<double> x(1);
   EXPECT_EQ(x.eval(x.id(), 4.0), 4.0);
 
+  EXPECT_EQ(x.deriv(x.id()), 1.0);
+  (x + x).deriv(x.id());
+
   const multiplication<variable<double>, variable<double>> xsqr = x * x;
   for (int i = 0; i < 1000; ++i) {
     const double rval = pdf(engine);
@@ -38,8 +41,8 @@ TEST(polynomial_eval, autodiff) {
     EXPECT_EQ(e4, rval + rval * rval - c + rval);
     const double e5 = x_quadratic.eval(x.id(), 0.5);
     EXPECT_EQ(e5, 0.75 - c + 0.5);
-    EXPECT_EQ(x_quadratic.deriv().eval(x.deriv_id(0), 1.0), 0.0);
-    EXPECT_EQ(x_quadratic.deriv().eval(x.deriv_id(1), 1.0), 2.0);
+    EXPECT_EQ(x_quadratic.deriv(x.id()).eval(x.id(), 1.0), 0.0);
+    EXPECT_EQ(x_quadratic.deriv(x.id()).eval(x.id(), 1.0), 2.0);
   }
 }
 
