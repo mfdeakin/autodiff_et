@@ -17,12 +17,19 @@ TEST(polynomial_eval, autodiff) {
   rngAlg engine(rd());
   std::uniform_real_distribution<double> pdf(-1024.0, 1024.0);
 
-  const variable<double> x(1);
+  constexpr variable<double> x(1);
   EXPECT_EQ(x.eval(x.id(), 4.0), 4.0);
 
   EXPECT_EQ(x.deriv(x.id()), 1.0);
   (x + x).deriv(x.id());
 
+  constexpr double c = -20.0;
+  constexpr addition<
+      subtraction<addition<variable<double>,
+                           multiplication<variable<double>, variable<double>>>,
+                  double>,
+      variable<double>>
+      x_quadratic = x + x * x - c + x;
   const multiplication<variable<double>, variable<double>> xsqr = x * x;
   for (int i = 0; i < 1000; ++i) {
     const double rval = pdf(engine);
@@ -30,20 +37,12 @@ TEST(polynomial_eval, autodiff) {
     const double e2 = xsqr.eval(x.id(), rval);
     EXPECT_EQ(e2, rval * rval);
 
-    constexpr double c = -20.0;
-    addition<subtraction<
-                 addition<variable<double>,
-                          multiplication<variable<double>, variable<double>>>,
-                 double>,
-             variable<double>>
-        x_quadratic = x + x * x - c + x;
     const double e4 = x_quadratic.eval(x.id(), rval);
     EXPECT_EQ(e4, rval + rval * rval - c + rval);
-    const double e5 = x_quadratic.eval(x.id(), 0.5);
-    EXPECT_EQ(e5, 0.75 - c + 0.5);
-    EXPECT_EQ(x_quadratic.deriv(x.id()).eval(x.id(), 1.0), 0.0);
-    EXPECT_EQ(x_quadratic.deriv(x.id()).eval(x.id(), 1.0), 2.0);
   }
+  const double e5 = x_quadratic.eval(x.id(), 0.5);
+  EXPECT_EQ(e5, 0.75 - c + 0.5);
+  EXPECT_EQ(x_quadratic.deriv(x.id()).eval(x.id(), 1.0), 4.0);
 }
 
 TEST(trig_eval, autodiff) {

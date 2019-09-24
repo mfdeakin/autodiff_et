@@ -171,7 +171,7 @@ public:
     }
   }
 
-  template <> constexpr space eval(const std::pair<id_t, space> head) const {
+  constexpr space eval(const std::pair<id_t, space> head) const {
     const auto [eval_id, v] = head;
     if (eval_id == id()) {
       return v;
