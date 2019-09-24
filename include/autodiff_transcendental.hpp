@@ -127,14 +127,6 @@ public:
 
   constexpr explicit Exp(expr_t val) : uop(val) {}
 
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Exp(this->val_.subs(eval_id, v));
-    } else {
-      return exp(this->val_);
-    }
-  }
-
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
       return *this * this->val_.deriv();
@@ -155,30 +147,6 @@ public:
   using space = typename uop::space;
 
   constexpr explicit Log(expr_t val) : uop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return log(this->val_.eval(eval_id, v));
-    } else {
-      return log(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return log(this->val_.eval(values));
-    } else {
-      return log(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Log(this->val_.subs(eval_id, v));
-    } else {
-      return log(this->val_);
-    }
-  }
 
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -203,30 +171,6 @@ public:
 
   constexpr explicit Sin(expr_t_ val) : uop(val) {}
 
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return sin(this->val_.eval(eval_id, v));
-    } else {
-      return sin(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return sin(this->val_.eval(values));
-    } else {
-      return sin(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Sin(this->val_.subs(eval_id, v));
-    } else {
-      return Sin(this->val_);
-    }
-  }
-
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
       return Cos(this->val_) * this->val_.deriv();
@@ -247,30 +191,6 @@ public:
   using space = typename uop::space;
 
   constexpr explicit Cos(expr_t_ val) : uop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return cos(this->val_.eval(eval_id, v));
-    } else {
-      return cos(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return cos(this->val_.eval(values));
-    } else {
-      return cos(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Cos(this->val_.subs(eval_id, v));
-    } else {
-      return cos(this->val_);
-    }
-  }
 
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -294,33 +214,10 @@ public:
 
   constexpr explicit Tan(expr_t_ val) : uop(val) {}
 
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return tan(this->val_.eval(eval_id, v));
-    } else {
-      return tan(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return tan(this->val_.eval(values));
-    } else {
-      return tan(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Tan(this->val_.subs(eval_id, v));
-    } else {
-      return tan(this->val_);
-    }
-  }
-
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return (Pow(Tan(this->val_), space(2)) + 1) * this->val_.deriv();
+      return (Pow<Tan<expr_t>, space>(Tan(this->val_), space(2)) + 1) *
+             this->val_.deriv();
     } else {
       return space(0);
     }
@@ -340,30 +237,6 @@ public:
   using space = typename uop::space;
 
   constexpr explicit Asin(expr_t_ val) : uop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return asin(this->val_.eval(eval_id, v));
-    } else {
-      return asin(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return asin(this->val_.eval(values));
-    } else {
-      return asin(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Asin(this->val_.subs(eval_id, v));
-    } else {
-      return asin(this->val_);
-    }
-  }
 
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -386,30 +259,6 @@ public:
 
   constexpr explicit Acos(expr_t val) : uop(val) {}
 
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return acos(this->val_.eval(eval_id, v));
-    } else {
-      return acos(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return acos(this->val_.eval(values));
-    } else {
-      return acos(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Acos(this->val_.subs(eval_id, v));
-    } else {
-      return acos(this->val_);
-    }
-  }
-
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
       return 1 / sqrt(1 - pow(this->val_, space(2)));
@@ -430,30 +279,6 @@ public:
   using space = typename uop::space;
 
   constexpr explicit Atan(expr_t val) : uop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return atan(this->val_.eval(eval_id, v));
-    } else {
-      return atan(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return atan(this->val_.eval(values));
-    } else {
-      return atan(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Atan(this->val_.subs(eval_id, v));
-    } else {
-      return atan(this->val_);
-    }
-  }
 
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
@@ -476,30 +301,6 @@ public:
   using space = typename bop::space;
 
   constexpr explicit Pow(expr_t val) : bop(val) {}
-
-  constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return pow(this->val_.eval(eval_id, v));
-    } else {
-      return pow(this->val_);
-    }
-  }
-
-  constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return pow(this->val_.eval(values));
-    } else {
-      return pow(this->val_);
-    }
-  }
-
-  constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Pow(this->val_.subs(eval_id, v));
-    } else {
-      return pow(this->val_);
-    }
-  }
 
   constexpr auto deriv() const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
