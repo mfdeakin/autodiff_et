@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <limits>
 #include <map>
 #include <type_traits>
@@ -71,7 +72,9 @@ constexpr bool is_valid_binary_expr =
     (std::is_base_of_v<expr, lhs_expr_t> ||
      std::is_base_of_v<expr, rhs_expr_t>);
 
-// Implement the basic binary expression operations
+// Implement the basic binary expression operations for valid expressions
+// ie, if the operation is defined for the spaces of the expressions, and if at
+// least one of the components is an expression type
 template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<
     is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::plus<>>,
@@ -143,6 +146,7 @@ public:
 
   explicit constexpr variable(const id_t &&id) : id_(id) {}
 
+  // Computes the partial derivative with respect to the specified variable
   constexpr space deriv(const id_t &deriv_id) const {
     if (id() == deriv_id) {
       return space(1);
@@ -159,6 +163,10 @@ public:
     }
   }
 
+  // Evaluate the variable with the list of pairs specifying the variable and
+  // the value to replace that variable with
+  // Variables that are not specified are assigned the additive identity for
+  // their space
   template <typename... pairs>
   constexpr space eval(const std::pair<id_t, space> head, pairs... tail) const {
     const auto [eval_id, v] = head;
@@ -182,6 +190,18 @@ public:
     }
   }
 
+  // A version so you don't have to pass in pairs
+  template <typename... pairs>
+  constexpr space eval(const id_t eval_id, space v, pairs... tail) const {
+    if (eval_id == id()) {
+      return v;
+    } else if (id() == unit_id) {
+      return space(1);
+    } else {
+      return eval(tail...);
+    }
+  }
+
   constexpr space eval(const id_t eval_id, space v) const {
     if (eval_id == id()) {
       return v;
@@ -192,6 +212,9 @@ public:
     }
   }
 
+  // A version which accepts vectors, where the id is the entry in the vector
+  // If the vector is smaller than the id, the variables are assigned the
+  // additive identity for their space
   constexpr space eval(std::vector<space> values) const {
     if (id() <= values.size()) {
       return values[id() + 1];
@@ -202,12 +225,51 @@ public:
     }
   }
 
+  // subs replaces variables in an expression with the specified value.
+  // In the future, sub-expressions should also be substitutable, though they
+  // may have a more complicated implementation.
+  // Because the variable id is determined at runtime, we use a trick to
+  // substitute it in without destroying other variables. Instead of directly
+  // substituting the sub-expression in, the sub-expression is multiplied by a
+  // variable. The variable may be the original variable, or it may be a special
+  // variable which always evaluates to the multiplicative identity
+  template <typename... pairs>
+  constexpr multiplication<variable<space>, space>
+  subs(const std::pair<id_t, space> head, pairs... tail) const {
+    const auto [eval_id, v] = head;
+    if (eval_id == id()) {
+      return variable(unit_id) * v;
+    } else {
+      return subs(tail...);
+    }
+  }
+
+  constexpr multiplication<variable<space>, space>
+  subs(const std::pair<id_t, space> head) const {
+    const auto [eval_id, v] = head;
+    if (eval_id == id()) {
+      return variable(unit_id) * v;
+    } else {
+      return *this * space(1);
+    }
+  }
+
+  template <typename... pairs>
+  constexpr multiplication<variable<space>, space>
+  subs(const id_t eval_id, const space v, pairs... tail) const {
+    if (eval_id == id()) {
+      return variable(unit_id) * v;
+    } else {
+      return subs(tail...);
+    }
+  }
+
   constexpr multiplication<variable<space>, space> subs(const id_t eval_id,
                                                         const space v) const {
     if (eval_id == id()) {
       return variable(unit_id) * v;
     } else {
-      return variable(unit_id) * space(1);
+      return *this * space(1);
     }
   }
 
@@ -219,8 +281,10 @@ protected:
   id_t id_;
 };
 
-// Primitive Unary operations
-template <typename expr_t_, typename uop_> class unary_op : public expr {
+// Unary operation base implementation
+template <typename expr_t_, typename uop_,
+          std::enable_if_t<std::is_base_of_v<expr, expr_t_>, int> = 0>
+class unary_op : public expr {
 public:
   using expr_t = expr_t_;
   using space = expr_domain<expr_t>;
@@ -228,12 +292,12 @@ public:
 
   constexpr explicit unary_op(expr_t val) : val_(val) {}
 
-  template <typename... pairs>
-  constexpr std::enable_if_t<
-      std::conjunction_v<std::is_same_v<std::pair<id_t, space>, pairs>...>,
-      space>
-  eval(pairs... list) const {
+  template <typename... pairs> constexpr auto eval(pairs... list) const {
     return uop()(this->val_.eval(list...));
+  }
+
+  constexpr space eval(const std::pair<id_t, space> head) const {
+    return uop()(this->val_.eval(head));
   }
 
   constexpr space eval(const id_t eval_id, space v) const {
@@ -242,6 +306,14 @@ public:
 
   constexpr space eval(const std::vector<space> &values) const {
     return uop()(this->val_.eval(values));
+  }
+
+  template <typename... pairs> constexpr auto subs(pairs... list) const {
+    return uop()(this->val_.subs(list...));
+  }
+
+  constexpr space subs(const std::pair<id_t, space> head) const {
+    return uop()(this->val_.subs(head));
   }
 
   constexpr auto subs(const id_t eval_id, const space v) const {
@@ -273,8 +345,19 @@ public:
   constexpr expr_t operator-() const { return this->val_; }
 };
 
-// Primitive Binary Operation
-template <typename lhs_expr_t_, typename rhs_expr_t_, typename bop_>
+// Binary Operation implementation
+// Specify the expression type on the left of the operator, the expression type
+// on the right, and then a functor which evaluates the operation when provided
+// with elements from the spaces of the left and right expressions
+// Note that the binary operator will only exist if the binary operator can be
+// applied to the spaces on the left and right
+// The binary operation implements methods for evaluating with specified values,
+// and for substituting in values without destroying the rest of the expression
+// The derivative operation is left for the child class to implement, as it'll
+// likely be able to implement it more efficiently
+template <typename lhs_expr_t_, typename rhs_expr_t_, typename bop_,
+          std::enable_if_t<is_valid_binary_expr<lhs_expr_t_, rhs_expr_t_, bop_>,
+                           int> = 0>
 class binary_op : public expr {
 public:
   using lhs_expr_t = lhs_expr_t_;
@@ -288,6 +371,38 @@ public:
   constexpr binary_op(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
       : lhs(lhs_), rhs(rhs_) {}
 
+  template <typename... pairs> constexpr auto eval(pairs... list) const {
+    // Using if constexpr from C++17 lets us ignore the fact that lhs or rhs may
+    // not provide an eval method (or any methods at all), so long as the if
+    // constexpr blocks entrance to that code path
+    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+        return bop_()(this->lhs.eval(list...), this->rhs.eval(list...));
+      } else {
+        return bop_()(this->lhs.eval(list...), this->rhs);
+      }
+    } else {
+      // Note that since this is a binary expression, at least one of the left
+      // or right sub-expressions must actually be expr and will provide
+      // an eval method
+      // Since this branch only occurs if the left sub-expression is not an
+      // expr, the right one must be
+      return bop_()(this->lhs, this->rhs.eval(list...));
+    }
+  }
+
+  constexpr space eval(const std::pair<id_t, space> head) const {
+    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+        return bop_()(this->lhs.eval(head), this->rhs.eval(head));
+      } else {
+        return bop_()(this->lhs.eval(head), this->rhs);
+      }
+    } else {
+      return bop_()(this->lhs, this->rhs.eval(head));
+    }
+  }
+
   constexpr space eval(const id_t eval_id, space v) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
       if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
@@ -300,22 +415,6 @@ public:
     }
   }
 
-  template <typename... pairs>
-  constexpr std::enable_if_t<
-      std::conjunction_v<std::is_same_v<std::pair<id_t, space>, pairs>...>,
-      space>
-  eval(pairs... list) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
-        return bop_()(this->lhs.eval(list...), this->rhs.eval(list...));
-      } else {
-        return bop_()(this->lhs.eval(list...), this->rhs);
-      }
-    } else {
-      return bop_()(this->lhs, this->rhs.eval(list...));
-    }
-  }
-
   constexpr space eval(const std::vector<space> &values) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
       if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
@@ -325,6 +424,30 @@ public:
       }
     } else {
       return bop_()(this->lhs, this->rhs.eval(values));
+    }
+  }
+
+  template <typename... pairs> constexpr auto subs(pairs... list) const {
+    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+        return bop_()(this->lhs.subs(list...), this->rhs.eval(list...));
+      } else {
+        return bop_()(this->lhs.eval(list...), this->rhs);
+      }
+    } else {
+      return bop_()(this->lhs, this->rhs.eval(list...));
+    }
+  }
+
+  constexpr auto subs(const std::pair<id_t, space> head) const {
+    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+        return bop_()(this->lhs.subs(head), this->rhs.eval(head));
+      } else {
+        return bop_()(this->lhs.eval(head), this->rhs);
+      }
+    } else {
+      return bop_()(this->lhs, this->rhs.eval(head));
     }
   }
 
@@ -345,6 +468,8 @@ protected:
   rhs_expr_t rhs;
 };
 
+// Implementations of the basic primitive operations for rings, using the stl
+// functor implementations of the operations
 template <typename lhs_expr_t_, typename rhs_expr_t_>
 class addition : public binary_op<lhs_expr_t_, rhs_expr_t_,
                                   std::plus<expr_domain<lhs_expr_t_>>> {

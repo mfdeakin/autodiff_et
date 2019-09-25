@@ -17,11 +17,17 @@ TEST(polynomial_eval, autodiff) {
   rngAlg engine(rd());
   std::uniform_real_distribution<double> pdf(-1024.0, 1024.0);
 
-  constexpr variable<double> x(1);
+  constexpr variable<double> x(1), y(2);
   EXPECT_EQ(x.eval(x.id(), 4.0), 4.0);
+  EXPECT_EQ(x.eval(std::pair{x.id(), 4.0}, std::pair{x.id() + 1, 10.0},
+                   std::pair{x.id(), -10.0}, std::pair{x.id() + 53.0, 100.0}),
+            4.0);
 
   EXPECT_EQ(x.deriv(x.id()), 1.0);
   (x + x).deriv(x.id());
+  double v = (x + y).eval(std::pair<auto_diff::id_t, double>{x.id(), 8.0},
+                          std::pair<auto_diff::id_t, double>{y.id(), 4.0});
+  EXPECT_EQ(v, 12.0);
 
   constexpr double c = -20.0;
   constexpr addition<
@@ -46,11 +52,15 @@ TEST(polynomial_eval, autodiff) {
 }
 
 TEST(trig_eval, autodiff) {
-  const variable<double> t(1);
-  const Sin<variable<double>> st = Sin(t);
+  constexpr variable<double> s(1), t(2);
+  constexpr auto st = Sin(t) + Sin(s);
   EXPECT_EQ(st.eval(t.id(), 0.0), 0.0);
   EXPECT_EQ(st.eval(t.id(), M_PI / 2.0), 1.0);
   EXPECT_NEAR(st.eval(t.id(), M_PI), 0.0, 2e-16);
+  EXPECT_NEAR(st.eval(std::pair<auto_diff::id_t, double>{t.id(), M_PI},
+                      std::pair<auto_diff::id_t, double>{s.id(), M_PI}),
+              0.0, 4e-16);
+  EXPECT_NEAR(st.eval(t.id(), M_PI, s.id(), M_PI), 0.0, 4e-16);
   const Cos<variable<double>> ct = Cos(t);
   EXPECT_EQ(ct.eval(t.id(), 0.0), 1.0);
   EXPECT_NEAR(ct.eval(t.id(), M_PI / 2.0), 0.0, 1e-16);
