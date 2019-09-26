@@ -102,10 +102,14 @@ TEST(polynomial_grad, autodiff) {
 
   constexpr auto e3 = x * x + 5.0 * x + c;
   constexpr auto e3_dx = 1.0 * x + x * 1.0 + 5.0 * 1.0;
-  decltype(e3_dx) test = e3.deriv(x.id());
-  gradient(e3);
+  constexpr auto e3_dxdx = 1.0 * 1.0 + 1.0 * 1.0;
   std::map<auto_diff::id_t, std::remove_const<decltype(e3_dx)>::type> grad3 =
       gradient(e3);
+  std::map<std::pair<auto_diff::id_t, auto_diff::id_t>,
+           std::remove_const<decltype(e3_dxdx)>::type>
+      hessian3 = hessian(e3);
+  EXPECT_EQ(hessian3.size(), 1 * 1);
+  EXPECT_EQ(e3_dxdx, hessian3.at({x.id(), x.id()}));
 
   constexpr auto e4 =
       x * x + 5.0 * x * y - 2.0 * y * y + M_PI * x + M_E * y + c;
@@ -115,9 +119,25 @@ TEST(polynomial_grad, autodiff) {
   constexpr auto e4_dy = (0.0 * x + x * 0.0) + (5.0 * 0.0 * y + 5.0 * x * 1.0) -
                          (2.0 * 1.0 * y + 2.0 * y * 1.0) + M_PI * 0.0 +
                          M_E * 1.0;
-  std::map<auto_diff::id_t, std::remove_const<decltype(e4_dx)>::type> grad4 =
-      gradient(e4);
-  EXPECT_EQ(grad4.size(), 2);
+  constexpr auto e4_dxdx = (1.0 * 1.0 + 1.0 * 1.0) +
+                           (5.0 * 1.0 * 0.0 + 5.0 * 1.0 * 0.0) -
+                           (2.0 * 0.0 * 0.0 + 2.0 * 0.0 * 0.0);
+  constexpr auto e4_dxdy = (0.0 * 1.0 + 1.0 * 0.0) +
+                           (5.0 * 0.0 * 0.0 + 5.0 * 1.0 * 1.0) -
+                           (2.0 * 1.0 * 0.0 + 2.0 * 0.0 * 1.0);
+  constexpr auto e4_dydy = (0.0 * 0.0 + 0.0 * 0.0) +
+                           (5.0 * 0.0 * 1.0 + 5.0 * 0.0 * 1.0) -
+                           (2.0 * 1.0 * 1.0 + 2.0 * 1.0 * 1.0);
+  const std::map<auto_diff::id_t, std::remove_const<decltype(e4_dx)>::type>
+      grad4 = gradient(e4);
+  const std::map<std::pair<auto_diff::id_t, auto_diff::id_t>,
+                 std::remove_const<decltype(e4_dxdx)>::type>
+      hessian4 = hessian(e4);
+  EXPECT_EQ(hessian4.size(), 2 * 2);
+  EXPECT_EQ(e4_dxdx, hessian4.at({x.id(), x.id()}));
+  EXPECT_EQ(e4_dxdy, hessian4.at({x.id(), y.id()}));
+  EXPECT_EQ(e4_dxdy, hessian4.at({y.id(), x.id()}));
+  EXPECT_EQ(e4_dydy, hessian4.at({y.id(), y.id()}));
 
   std::random_device rd;
   rngAlg engine(rd());
