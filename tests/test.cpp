@@ -2,6 +2,7 @@
 #include <cmath>
 
 #include "autodiff.hpp"
+#include "autodiff_optimize.hpp"
 #include "autodiff_transcendental.hpp"
 
 #include <random>
@@ -77,6 +78,57 @@ TEST(trig_eval, autodiff) {
     EXPECT_EQ(st.eval(t.id(), rval), std::sin(rval));
     EXPECT_EQ(ct.eval(t.id(), rval), std::cos(rval));
     EXPECT_EQ(tt.eval(t.id(), rval), std::tan(rval));
+  }
+}
+
+TEST(polynomial_grad, autodiff) {
+  constexpr variable<double> x(1), y(2);
+  constexpr double c = 432.043241;
+  constexpr auto e1 = x + c;
+  constexpr auto e1_dx = 1.0 + 0.0;
+  std::map<auto_diff::id_t, std::remove_const<decltype(e1_dx)>::type> grad1 =
+      gradient(e1);
+  EXPECT_EQ(grad1.size(), 1);
+  EXPECT_EQ(e1_dx, grad1[x.id()]);
+
+  constexpr auto e2 = x + 2.0 * y + c;
+  constexpr auto e2_dx = 1.0 + 2.0 * 0.0 + 0.0;
+  constexpr auto e2_dy = 0.0 + 2.0 * 1.0 + 0.0;
+  std::map<auto_diff::id_t, std::remove_const<decltype(e2_dx)>::type> grad2 =
+      gradient(e2);
+  EXPECT_EQ(grad2.size(), 2);
+  EXPECT_EQ(e2_dx, grad2[x.id()]);
+  EXPECT_EQ(e2_dy, grad2[y.id()]);
+
+  constexpr auto e3 = x * x + 5.0 * x + c;
+  constexpr auto e3_dx = 1.0 * x + x * 1.0 + 5.0 * 1.0;
+  decltype(e3_dx) test = e3.deriv(x.id());
+  gradient(e3);
+  std::map<auto_diff::id_t, std::remove_const<decltype(e3_dx)>::type> grad3 =
+      gradient(e3);
+
+  constexpr auto e4 =
+      x * x + 5.0 * x * y - 2.0 * y * y + M_PI * x + M_E * y + c;
+  constexpr auto e4_dx = (1.0 * x + x * 1.0) + (5.0 * 1.0 * y + 5.0 * x * 0.0) -
+                         (2.0 * 0.0 * y + 2.0 * y * 0.0) + M_PI * 1.0 +
+                         M_E * 0.0;
+  constexpr auto e4_dy = (0.0 * x + x * 0.0) + (5.0 * 0.0 * y + 5.0 * x * 1.0) -
+                         (2.0 * 1.0 * y + 2.0 * y * 1.0) + M_PI * 0.0 +
+                         M_E * 1.0;
+  std::map<auto_diff::id_t, std::remove_const<decltype(e4_dx)>::type> grad4 =
+      gradient(e4);
+  EXPECT_EQ(grad4.size(), 2);
+
+  std::random_device rd;
+  rngAlg engine(rd());
+  std::uniform_real_distribution<double> pdf(-1024.0, 1024.0);
+  for (int i = 0; i < 100; i++) {
+    const double x_eval = pdf(engine);
+    const double y_eval = pdf(engine);
+    EXPECT_EQ(e4_dx.eval(x.id(), x_eval, y.id(), y_eval),
+              grad4.at(x.id()).eval(x.id(), x_eval, y.id(), y_eval));
+    EXPECT_EQ(e4_dy.eval(x.id(), x_eval, y.id(), y_eval),
+              grad4.at(y.id()).eval(x.id(), x_eval, y.id(), y_eval));
   }
 }
 

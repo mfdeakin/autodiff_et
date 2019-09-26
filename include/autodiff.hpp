@@ -7,6 +7,7 @@
 #include <functional>
 #include <limits>
 #include <map>
+#include <set>
 #include <type_traits>
 #include <vector>
 
@@ -273,7 +274,9 @@ public:
     }
   }
 
-  constexpr bool uses_id(id_t eval_id) const { return id() == eval_id; }
+  constexpr void expr_vars(std::set<id_t> &var_ids) const {
+    var_ids.insert(id());
+  }
 
   constexpr id_t id() const { return id_; }
 
@@ -318,6 +321,10 @@ public:
 
   constexpr auto subs(const id_t eval_id, const space v) const {
     return uop()(this->val_.subs(eval_id, v));
+  }
+
+  constexpr void expr_vars(std::set<id_t> &var_ids) const {
+    this->val_.expr_vars(var_ids);
   }
 
 protected:
@@ -460,6 +467,15 @@ public:
       }
     } else {
       return bop_()(this->lhs, this->rhs.eval(eval_id, v));
+    }
+  }
+
+  constexpr void expr_vars(std::set<id_t> &var_ids) const {
+    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
+      this->lhs.expr_vars(var_ids);
+    }
+    if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+      this->rhs.expr_vars(var_ids);
     }
   }
 
