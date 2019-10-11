@@ -5,18 +5,33 @@
 using namespace auto_diff;
 
 // Check that our utility for determining the domain is correct is working
-static_assert(std::is_same_v<binary_expr_domain<double, double>, double>,
+static_assert(std::is_same_v<expr_domain<double>, double>,
               "expr_domain not working");
+static_assert(!std::is_same_v<expr_domain<variable<double>>, variable<double>>,
+              "expr_domain not working");
+static_assert(std::is_same_v<expr_domain<variable<double>>, double>,
+              "expr_domain not working");
+
+static_assert(std::is_same_v<binary_expr_domain<double, double>, double>,
+              "binary_expr_domain not working");
 static_assert(
     std::is_same_v<binary_expr_domain<variable<double>, double>, double>,
-    "expr_domain not working");
+    "binary_expr_domain not working");
 static_assert(
     std::is_same_v<binary_expr_domain<double, variable<double>>, double>,
-    "expr_domain not working");
+    "binary_expr_domain not working");
 static_assert(
     std::is_same_v<binary_expr_domain<variable<double>, variable<double>>,
                    double>,
-    "expr_domain not working");
+    "binary_expr_domain not working");
+
+static_assert(is_indexable<double> == false, "is_indexable not working");
+static_assert(is_indexable<double[5]> == true,
+              "is_indexable not working");
+static_assert(is_indexable<std::array<double, 5>> == true,
+              "is_indexable not working");
+static_assert(is_indexable<std::vector<double>> == true,
+              "is_indexable not working");
 
 // Checks that is_valid_binary_expr is working on some basic types
 static_assert(!is_valid_binary_expr<double, double, std::plus<>>,
