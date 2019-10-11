@@ -27,6 +27,10 @@ template <typename expr_t, typename = void> struct expr_domain_impl {
   using space = expr_t;
 };
 
+// SFINAE: The compiler will attempt to specialize to this type, to do so it
+// checks whether the expr_t parameter doesn't provide a space member type, and
+// if so, use this specialization, otherwise, it will use the generic
+// implementation
 template <typename expr_t>
 struct expr_domain_impl<expr_t, std::void_t<typename expr_t::space>> {
   using space = typename expr_t::space;
@@ -37,6 +41,8 @@ using expr_domain = typename expr_domain_impl<expr_t>::space;
 
 // This determines the space of the variables in the binary expression. If they
 // are not the same, compilation is halted
+// It may make sense to use the mathematical approach to domains, but the
+// machinery required is more substantial than I'd like to deal with currently
 template <typename lhs_expr_t, typename rhs_expr_t>
 struct binary_expr_domain_impl {
   static_assert(
@@ -48,6 +54,27 @@ struct binary_expr_domain_impl {
 template <typename lhs_expr_t, typename rhs_expr_t>
 using binary_expr_domain =
     typename binary_expr_domain_impl<lhs_expr_t, rhs_expr_t>::space;
+
+// Determine whether the domain is indexable and the type of its index values
+template <typename domain>
+using index_t_impl = decltype(std::declval<domain &>()[0]);
+
+template <typename domain, typename = void> struct is_indexable_impl {
+  static constexpr bool value = false;
+  using type = void;
+};
+
+template <typename domain>
+struct is_indexable_impl<domain, std::void_t<index_t_impl<domain>>> {
+  static constexpr bool value = true;
+  using type = index_t_impl<domain>;
+};
+
+template <typename domain>
+static constexpr bool is_indexable = is_indexable_impl<domain>::value;
+
+template <typename domain>
+using index_t = typename is_indexable_impl<domain>::type;
 
 // Everything that is an expression should define an alias called "space"
 // indicating the domain the expression acts on
@@ -219,6 +246,81 @@ public:
   constexpr space eval(std::vector<space> values) const {
     if (id() <= values.size()) {
       return values[id() + 1];
+    } else if (id() == unit_id) {
+      return space(1);
+    } else {
+      return space(0);
+    }
+  }
+
+  // Essentially the same as the previous for indexing
+  template <typename Space = space, typename... pairs>
+  constexpr std::enable_if_t<
+      is_indexable<Space> && std::is_same_v<index_t<Space>, space>, space>
+  eval_idx(const id_t &idx, const std::pair<id_t, Space> head,
+           pairs... tail) const {
+    // constexpr space eval(const std::pair<id_t, space> head, pairs... tail)
+    // const {
+    const auto [eval_id, v] = head;
+    if (eval_id == id()) {
+      return v[idx];
+    } else if (id() == unit_id) {
+      return space(1);
+    } else {
+      return eval_idx(idx, tail...);
+    }
+  }
+
+  template <typename Space = space>
+  constexpr std::enable_if_t<
+      is_indexable<Space> && std::is_same_v<index_t<Space>, space>, space>
+  eval_idx(const id_t &idx, const std::pair<id_t, space> head) const {
+    const auto [eval_id, v] = head;
+    if (eval_id == id()) {
+      return v[idx];
+    } else if (id() == unit_id) {
+      return space(1);
+    } else {
+      return space(0);
+    }
+  }
+
+  // A version so you don't have to pass in pairs
+  template <typename Space = space, typename... pairs>
+  constexpr std::enable_if_t<
+      is_indexable<Space> && std::is_same_v<index_t<Space>, space>, space>
+  eval_idx(const id_t &idx, const id_t eval_id, space v, pairs... tail) const {
+    if (eval_id == id()) {
+      return v[idx];
+    } else if (id() == unit_id) {
+      return space(1);
+    } else {
+      return eval_idx(idx, tail...);
+    }
+  }
+
+  template <typename Space = space>
+  constexpr std::enable_if_t<
+      is_indexable<Space> && std::is_same_v<index_t<Space>, space>, space>
+  eval_idx(const id_t &idx, const id_t eval_id, space v) const {
+    if (eval_id == id()) {
+      return v[idx];
+    } else if (id() == unit_id) {
+      return space(1);
+    } else {
+      return space(0);
+    }
+  }
+
+  // A version which accepts vectors, where the id is the entry in the vector
+  // If the vector is smaller than the id, the variables are assigned the
+  // additive identity for their space
+  template <typename Space = space>
+  constexpr std::enable_if_t<
+      is_indexable<Space> && std::is_same_v<index_t<Space>, space>, space>
+  eval_idx(const id_t &idx, std::vector<space> values) const {
+    if (id() <= values.size()) {
+      return values[id() + 1][idx];
     } else if (id() == unit_id) {
       return space(1);
     } else {
