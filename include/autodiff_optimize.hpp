@@ -2,7 +2,6 @@
 #ifndef AUTODIFF_OPTIMIZE_HPP
 #define AUTODIFF_OPTIMIZE_HPP
 
-#include "SyPDSolver.hpp"
 #include "autodiff.hpp"
 
 namespace auto_diff {
@@ -70,7 +69,13 @@ public:
   const auto &f_grad() const { return f_grad_; }
   const std::vector<space> &prev_minimizer() const { return minimizer; }
 
-  const std::vector<space> &local_minimum(const std::vector<space> &initial) {
+  const std::vector<space> &local_minimum(
+      const std::vector<space> &initial,
+      const double threshold = std::numeric_limits<double>::epsilon()) {
+    // Implements Fletcher-Reeves' non-linear cg method
+    double prev_grad_mag = grad_mag(initial);
+    while (prev_grad_mag >= threshold) {
+    }
     return minimizer;
   }
 
@@ -90,12 +95,30 @@ protected:
     }
   }
 
+  void pos_grad(const std::vector<space> &pos,
+                std::vector<space> &result) const {
+    assert(result.size() == pos.size());
+    assert(result.size() == f_grad_.size());
+    for (int i = 0; i < pos.size(); ++i) {
+      result[i] = f_grad_.at(i).eval(pos);
+    }
+  }
+
   double eval_grad(const std::vector<space> &pos) const {
     double val = 0.0;
     for (auto pderiv : f_grad_) {
       val += pderiv.eval(pos);
     }
     return val;
+  }
+
+  double grad_mag(const std::vector<space> &pos) const {
+    double mag = 0.0;
+    for (auto pderiv : f_grad_) {
+      const double p = pderiv.eval(pos);
+      mag += p * p;
+    }
+    return mag;
   }
 
   void zoom(std::vector<space> &x0, std::vector<space> &step_dir,
