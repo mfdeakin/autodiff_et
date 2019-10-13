@@ -244,8 +244,8 @@ public:
   // If the vector is smaller than the id, the variables are assigned the
   // additive identity for their space
   constexpr space eval(std::vector<space> values) const {
-    if (id() <= values.size()) {
-      return values[id() + 1];
+    if (id() < values.size()) {
+      return values[id()];
     } else if (id() == unit_id) {
       return space(1);
     } else {

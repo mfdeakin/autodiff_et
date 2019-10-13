@@ -2,6 +2,10 @@
 #ifndef AUTODIFF_OPTIMIZE_HPP
 #define AUTODIFF_OPTIMIZE_HPP
 
+#include <algorithm>
+#include <map>
+#include <vector>
+
 #include "autodiff.hpp"
 
 namespace auto_diff {
@@ -62,21 +66,35 @@ public:
       std::numeric_limits<space>::epsilon() * 128.0;
 
   CNLMin(const expr_t &f)
-      : f_(f), f_grad_(gradient(f)), minimizer(f_grad_.size()),
-        buffer(f_grad_.size()), origin() {}
+      : f_(f),
+        f_grad_(gradient(f)), minimizer_buf{std::vector<space>(f_grad_.size()),
+                                            std::vector<space>(f_grad_.size())},
+        search_dir(f_grad_.size()), buffer(f_grad_.size()), origin() {}
 
   const expr_t &f() const { return f_; }
   const auto &f_grad() const { return f_grad_; }
-  const std::vector<space> &prev_minimizer() const { return minimizer; }
 
   const std::vector<space> &local_minimum(
       const std::vector<space> &initial,
       const double threshold = std::numeric_limits<double>::epsilon()) {
     // Implements Fletcher-Reeves' non-linear cg method
-    double prev_grad_mag = grad_mag(initial);
-    while (prev_grad_mag >= threshold) {
+    std::vector<space> *prev_min = &minimizer_buf[0];
+    std::vector<space> *cur_min = &minimizer_buf[1];
+    std::copy(initial.begin(), initial.end(), prev_min->begin());
+    grad_search_dir(*prev_min, search_dir);
+    double prev_sd_mag = vector_mag(search_dir);
+    while (prev_sd_mag >= threshold) {
+      strong_wolfe_ls(*prev_min, search_dir, *cur_min);
+      grad_search_dir(*cur_min, buffer);
+      const double sd_mag = vector_mag(buffer);
+      const double b_k = sd_mag / prev_sd_mag;
+      for (int i = 0; i < search_dir.size(); ++i) {
+        search_dir[i] = buffer[i] + b_k * search_dir[i];
+      }
+      prev_sd_mag = sd_mag;
+      std::swap(prev_min, cur_min);
     }
-    return minimizer;
+    return *prev_min;
   }
 
   const std::vector<space> &local_minimum() {
@@ -86,46 +104,42 @@ public:
     return local_minimum(origin);
   }
 
-protected:
   void step_pos(const std::vector<space> &x0,
                 const std::vector<space> &step_dir, const double step_size,
-                std::vector<space> &new_pos) {
+                std::vector<space> &new_pos) const {
     for (int i = 0; i < x0.size(); ++i) {
       new_pos[i] = x0[i] + step_dir[i] * step_size;
     }
   }
 
-  void pos_grad(const std::vector<space> &pos,
-                std::vector<space> &result) const {
+  void grad_search_dir(const std::vector<space> &pos,
+                       std::vector<space> &result) const {
     assert(result.size() == pos.size());
     assert(result.size() == f_grad_.size());
     for (int i = 0; i < pos.size(); ++i) {
-      result[i] = f_grad_.at(i).eval(pos);
+      result[i] = -f_grad_.at(i).eval(pos);
     }
   }
 
   double eval_grad(const std::vector<space> &pos) const {
-    double val = 0.0;
-    for (auto pderiv : f_grad_) {
-      val += pderiv.eval(pos);
+    if constexpr (std::is_base_of_v<expr,
+                                    typename grad_map_type::mapped_type>) {
+      double val = 0.0;
+      for (auto pderiv : f_grad_) {
+        val += pderiv.second.eval(pos);
+      }
+      return val;
+    } else {
+      // The derivative is a constant
+      return (f_grad_.begin()->second) * f_grad_.size();
     }
-    return val;
   }
 
-  double grad_mag(const std::vector<space> &pos) const {
-    double mag = 0.0;
-    for (auto pderiv : f_grad_) {
-      const double p = pderiv.eval(pos);
-      mag += p * p;
-    }
-    return mag;
-  }
-
-  void zoom(std::vector<space> &x0, std::vector<space> &step_dir,
+  void zoom(const std::vector<space> &x0, const std::vector<space> &step_dir,
             double step_min, double step_max, const double start_val,
             const double low_val, const double start_deriv,
             const double coeff_1, const double coeff_2,
-            std::vector<space> &new_pt) {
+            std::vector<space> &new_pt) const {
     for (;;) {
       const double new_step = (step_min + step_max) / 2.0;
       step_pos(x0, step_dir, new_step, new_pt);
@@ -146,10 +160,10 @@ protected:
     }
   }
 
-  const std::vector<space> &
-  strong_wolfe_ls(const std::vector<space> &x0,
-                  const std::vector<space> &search_dir,
-                  const double max_step_size = 1.0) {
+  void strong_wolfe_ls(const std::vector<space> &x0,
+                       const std::vector<space> &search_dir,
+                       std::vector<space> &new_pt,
+                       const double max_step_size = 1.0) {
     assert(max_step_size > 0.0);
     constexpr double coeff_1 = 0.5, coeff_2 = 0.5;
     const double start_val = f_.eval(x0);
@@ -158,33 +172,31 @@ protected:
     double prev_step = 0.0;
     double cur_step = max_step_size;
 
-    std::vector<space> &new_pt = buffer;
     double prev_val = std::numeric_limits<double>::infinity();
     for (;;) {
       step_pos(x0, search_dir, cur_step, new_pt);
       const double cur_val = f_.eval(new_pt);
-      if ((cur_val > x0 + cur_step * coeff_1 * start_deriv) ||
+      if ((cur_val > start_val + cur_step * coeff_1 * start_deriv) ||
           (cur_val >= prev_val)) {
-        zoom(prev_step, cur_step, start_val, prev_val, start_deriv, coeff_1,
-             coeff_2, new_pt);
-        return new_pt;
+        zoom(x0, search_dir, prev_step, cur_step, start_val, prev_val,
+             start_deriv, coeff_1, coeff_2, new_pt);
+        break;
       }
       const double new_deriv = eval_grad(new_pt);
 
       if (std::abs(new_deriv) <= -coeff_2 * start_deriv) {
-        return new_pt;
+        break;
       }
       if (new_deriv >= 0.0) {
-        zoom(cur_step, prev_step, start_val, cur_val, start_deriv, coeff_1,
-             coeff_2, new_pt);
-        return new_pt;
+        zoom(x0, search_dir, cur_step, prev_step, start_val, prev_val,
+             start_deriv, coeff_1, coeff_2, new_pt);
+        break;
       }
       prev_val = cur_val;
     }
   }
 
   const std::vector<space> &backtrack_ls(const std::vector<space> &x0,
-                                         const std::vector<space> &search_dir,
                                          double step_size) {
     assert(x0.size() == search_dir.size());
     assert(x0.size() == f_grad_.size());
@@ -209,9 +221,21 @@ protected:
     return new_pt;
   }
 
+  static double vector_mag(const std::vector<space> &v) {
+    double mag = 0.0;
+    for (auto v_i : v) {
+      mag += v_i * v_i;
+    }
+    return mag;
+  }
+
+protected:
   expr_t f_;
-  typename std::invoke_result<decltype(gradient<expr_t>), expr_t>::type f_grad_;
-  std::vector<space> minimizer;
+  using grad_map_type =
+      typename std::invoke_result<decltype(gradient<expr_t>), expr_t>::type;
+  grad_map_type f_grad_;
+  std::array<std::vector<space>, 2> minimizer_buf;
+  std::vector<space> search_dir;
   std::vector<space> buffer;
   std::vector<space> origin;
 };

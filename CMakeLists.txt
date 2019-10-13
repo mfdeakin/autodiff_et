@@ -30,7 +30,7 @@ if(PETSc_FOUND AND MPI_FOUND)
   add_test(petsc_test petsc_tests)
 endif(PETSc_FOUND AND MPI_FOUND)
 
-add_executable(unit_tests tests/test.cpp)
+add_executable(unit_tests tests/test.cpp tests/test_optimize.cpp)
 set_target_properties(unit_tests PROPERTIES COMPILE_FLAGS "-g -std=c++17 -Wall")
 target_link_libraries(unit_tests gtest pthread)
 add_test(all unit_tests)
