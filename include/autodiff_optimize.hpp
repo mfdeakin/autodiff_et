@@ -107,7 +107,7 @@ public:
   void step_pos(const std::vector<space> &x0,
                 const std::vector<space> &step_dir, const double step_size,
                 std::vector<space> &new_pos) const {
-    for (int i = 0; i < x0.size(); ++i) {
+    for (size_t i = 0; i < x0.size(); ++i) {
       new_pos[i] = x0[i] + step_dir[i] * step_size;
     }
   }
@@ -116,84 +116,135 @@ public:
                        std::vector<space> &result) const {
     assert(result.size() == pos.size());
     assert(result.size() == f_grad_.size());
-    for (int i = 0; i < pos.size(); ++i) {
+    for (size_t i = 0; i < pos.size(); ++i) {
       result[i] = -f_grad_.at(i).eval(pos);
     }
   }
 
-  double eval_grad(const std::vector<space> &pos) const {
-    if constexpr (std::is_base_of_v<expr,
-                                    typename grad_map_type::mapped_type>) {
-      double val = 0.0;
-      for (auto pderiv : f_grad_) {
-        val += pderiv.second.eval(pos);
+  double dir_deriv(const std::vector<space> &pos,
+                   const std::vector<space> &direction) const {
+    double val = 0.0;
+    for (size_t i = 0; i < f_grad_.size(); ++i) {
+      if constexpr (std::is_base_of_v<expr,
+                                      typename grad_map_type::mapped_type>) {
+        val += f_grad_.at(i).eval(pos) * direction.at(i);
+      } else {
+        // The derivative is a constant
+        val += f_grad_.at(i) * direction.at(i);
       }
-      return val;
-    } else {
-      // The derivative is a constant
-      return (f_grad_.begin()->second) * f_grad_.size();
     }
+    return val;
   }
 
-  void zoom(const std::vector<space> &x0, const std::vector<space> &step_dir,
-            double step_min, double step_max, const double start_val,
-            const double low_val, const double start_deriv,
-            const double coeff_1, const double coeff_2,
-            std::vector<space> &new_pt) const {
-    for (;;) {
-      const double new_step = (step_min + step_max) / 2.0;
+  double
+  zoom(const std::vector<space> &x0, const std::vector<space> &step_dir,
+       double step_low, double step_high, const double coeff_1,
+       const double coeff_2, std::vector<space> &new_pt,
+       double start_eval = std::numeric_limits<space>::quiet_NaN(),
+       double low_eval = std::numeric_limits<space>::quiet_NaN(),
+       double start_deriv = std::numeric_limits<space>::quiet_NaN()) const {
+    // Checks to ensure the inputs are sane
+    assert(0.0 < coeff_1);
+    assert(coeff_1 < coeff_2);
+    assert(coeff_2 < 1.0);
+
+    // For testing; using this is inefficient since the evaluation should have
+    // already checked this
+    if (std::isnan(start_eval)) {
+      start_eval = f_.eval(x0);
+    } else {
+      assert(start_eval == f_.eval(x0));
+    }
+    if (std::isnan(start_deriv)) {
+      start_deriv = dir_deriv(x0, step_dir);
+    } else {
+      assert(start_deriv == dir_deriv(x0, step_dir));
+    }
+    assert(start_deriv < 0.0);
+
+    step_pos(x0, step_dir, step_low, new_pt);
+    if (std::isnan(low_eval)) {
+      low_eval = f_.eval(new_pt);
+    } else {
+      assert(low_eval == f_.eval(new_pt));
+    }
+    const space dd_low = dir_deriv(new_pt, step_dir);
+
+    step_pos(x0, step_dir, step_high, new_pt);
+    assert(low_eval < f_.eval(new_pt));
+
+    assert(dd_low * (step_high - step_low) < 0.0);
+    // In this loop, the interval (step_low, step_high) consists partly of step
+    // lengths satisfying the strong Wolfe conditions
+    // The minimum function value seen is at the step length step_low
+    // step_high is chosen so that the directional derivative at the minimum
+    // step length times the length of the range is negative
+    while (std::abs(step_low - step_high) >
+               std::numeric_limits<double>::epsilon() *
+                   std::max(std::abs(step_low), std::abs(step_high)) &&
+           step_high > 0.0) {
+      // Use bisection to choose the next trial value
+      const double new_step = (step_low + step_high) / 2.0;
+
       step_pos(x0, step_dir, new_step, new_pt);
       const double new_eval = f_.eval(new_pt);
-      if (new_eval > start_val + coeff_1 * new_step * start_deriv ||
-          new_eval >= low_val) {
-        step_pos(x0, step_dir, step_max, new_pt);
+      if (new_eval > start_eval + coeff_1 * new_step * start_deriv ||
+          new_eval >= low_eval) {
+        step_high = new_step;
       } else {
-        const double new_grad = eval_grad(new_pt);
+        const double new_grad = dir_deriv(new_pt, step_dir);
         if (std::abs(new_grad) < -coeff_2 * start_deriv) {
-          return;
+          return new_step;
         }
-        if (new_grad * (step_max - step_min) <= 0) {
-          step_max = step_min;
+        if (new_grad * (step_high - step_low) >= 0) {
+          step_high = step_low;
         }
-        step_min = new_step;
+        step_low = new_step;
       }
     }
+    return step_low;
   }
 
-  void strong_wolfe_ls(const std::vector<space> &x0,
-                       const std::vector<space> &search_dir,
-                       std::vector<space> &new_pt,
-                       const double max_step_size = 1.0) {
+  double strong_wolfe_ls(const std::vector<space> &x0,
+                         const std::vector<space> &search_dir,
+                         std::vector<space> &new_pt,
+                         const double max_step_size = 1.0) {
     assert(max_step_size > 0.0);
-    constexpr double coeff_1 = 0.5, coeff_2 = 0.5;
+    constexpr double coeff_1 = 0.25, coeff_2 = 0.75;
     const double start_val = f_.eval(x0);
-    const double start_deriv = eval_grad(x0);
+    const double start_deriv = dir_deriv(x0, search_dir);
+    assert(start_deriv < 0);
+
+    constexpr int max_steps = 16;
 
     double prev_step = 0.0;
-    double cur_step = max_step_size;
+    double prev_val = start_val;
 
-    double prev_val = std::numeric_limits<double>::infinity();
-    for (;;) {
+    double cur_step = max_step_size / 2.0;
+
+    for (int i = 1; i < max_steps; ++i) {
       step_pos(x0, search_dir, cur_step, new_pt);
       const double cur_val = f_.eval(new_pt);
-      if ((cur_val > start_val + cur_step * coeff_1 * start_deriv) ||
-          (cur_val >= prev_val)) {
-        zoom(x0, search_dir, prev_step, cur_step, start_val, prev_val,
-             start_deriv, coeff_1, coeff_2, new_pt);
-        break;
+      if ((cur_val > start_val + coeff_1 * cur_step * start_deriv) ||
+          (cur_val >= prev_val && i > 1)) {
+        return zoom(x0, search_dir, prev_step, cur_step, coeff_1, coeff_2,
+                    new_pt, start_val, prev_val, start_deriv);
       }
-      const double new_deriv = eval_grad(new_pt);
+      const double new_deriv = dir_deriv(new_pt, search_dir);
 
       if (std::abs(new_deriv) <= -coeff_2 * start_deriv) {
-        break;
+        return cur_step;
       }
       if (new_deriv >= 0.0) {
-        zoom(x0, search_dir, cur_step, prev_step, start_val, prev_val,
-             start_deriv, coeff_1, coeff_2, new_pt);
-        break;
+        return zoom(x0, search_dir, cur_step, prev_step, coeff_1, coeff_2,
+                    new_pt, start_val, prev_val, start_deriv);
       }
+      prev_step = cur_step;
       prev_val = cur_val;
+      cur_step = (cur_step + max_step_size) / 2.0;
     }
+    assert(false);
+    return std::numeric_limits<space>::signaling_NaN();
   }
 
   const std::vector<space> &backtrack_ls(const std::vector<space> &x0,
