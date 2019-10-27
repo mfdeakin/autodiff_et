@@ -51,6 +51,7 @@ TEST(random_test, zoom_ls) {
     const double min_step = 0.0009765625 * dmag, max_step = 2.0 * dmag;
     const double step_size =
         optimizer.zoom(x0, search_dir, min_step, max_step, c1, c2, new_pt);
+    ASSERT_FALSE(std::isnan(step_size));
 
     optimizer.grad_search_dir(new_pt, mini_dir);
     const double new_deriv =
@@ -93,6 +94,7 @@ TEST(fixed_test, wolfe_ls) {
   const double max_step = 4.0;
   const double step_size =
       optimizer.strong_wolfe_ls(x0, search_dir, new_pt, max_step);
+  ASSERT_FALSE(std::isnan(step_size));
 
   // Verify the point is within the required step range
   ASSERT_GE(step_size, 0.0);
@@ -143,6 +145,7 @@ TEST(random_test, strong_wolfe_ls) {
     const double deriv_val = optimizer.dir_deriv(x0, search_dir);
     const double step_size =
         optimizer.strong_wolfe_ls(x0, mini_dir, new_pt, max_step);
+    ASSERT_FALSE(std::isnan(step_size));
 
     optimizer.grad_search_dir(new_pt, mini_dir);
     const double new_deriv =
