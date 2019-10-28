@@ -76,14 +76,17 @@ public:
 
   const std::vector<space> &local_minimum(
       const std::vector<space> &initial,
-      const double threshold = std::numeric_limits<double>::epsilon()) {
+      const double threshold = 1e-8) {
     // Implements Fletcher-Reeves' non-linear cg method
     std::vector<space> *prev_min = &minimizer_buf[0];
     std::vector<space> *cur_min = &minimizer_buf[1];
     std::copy(initial.begin(), initial.end(), prev_min->begin());
     grad_search_dir(*prev_min, search_dir);
     double prev_sd_mag = vector_mag(search_dir);
-    while (prev_sd_mag >= threshold) {
+    int i = 0;
+    while (prev_sd_mag >= threshold && dir_deriv(*prev_min, search_dir) < 0.0) {
+      fprintf(stderr, "step %d; (% .6e, % .6e) + \\alpha (% .6e, % .6e)\n", i++,
+              (*prev_min)[0], (*prev_min)[1], search_dir[0], search_dir[1]);
       strong_wolfe_ls(*prev_min, search_dir, *cur_min);
       grad_search_dir(*cur_min, buffer);
       const double sd_mag = vector_mag(buffer);
@@ -168,12 +171,16 @@ public:
     } else {
       assert(low_eval == f_.eval(new_pt));
     }
+#ifndef NDEBUG
     const space dd_low = dir_deriv(new_pt, step_dir);
+#endif
 
     step_pos(x0, step_dir, step_high, new_pt);
-    assert(low_eval < f_.eval(new_pt));
+    // assert(low_eval < f_.eval(new_pt));
 
-    assert(dd_low * (step_high - step_low) < 0.0);
+		// This invariant isn't always true...
+    // assert(dd_low * (step_high - step_low) < 0.0);
+
     // In this loop, the interval (step_low, step_high) consists partly of step
     // lengths satisfying the strong Wolfe conditions
     // The minimum function value seen is at the step length step_low
@@ -210,7 +217,7 @@ public:
                          std::vector<space> &new_pt,
                          const double max_step_size = 1.0) {
     assert(max_step_size > 0.0);
-    constexpr double coeff_1 = 0.25, coeff_2 = 0.75;
+    constexpr double coeff_1 = 0.03125, coeff_2 = 0.96875;
     const double start_val = f_.eval(x0);
     const double start_deriv = dir_deriv(x0, search_dir);
     assert(start_deriv < 0);
@@ -225,19 +232,25 @@ public:
     for (int i = 1; i < max_steps; ++i) {
       step_pos(x0, search_dir, cur_step, new_pt);
       const double cur_val = f_.eval(new_pt);
-      if ((cur_val > start_val + coeff_1 * cur_step * start_deriv) ||
+      fprintf(stderr, "%2d step: % .6e; % .6e / % .6e\n", i, cur_step,
+              prev_step, max_step_size);
+      if ((cur_val > prev_val &&
+           cur_val > start_val + coeff_1 * cur_step * start_deriv) ||
           (cur_val >= prev_val && i > 1)) {
+        fprintf(stderr, "strong wolfe branch 1\n");
         return zoom(x0, search_dir, prev_step, cur_step, coeff_1, coeff_2,
                     new_pt, start_val, prev_val, start_deriv);
       }
       const double new_deriv = dir_deriv(new_pt, search_dir);
 
       if (std::abs(new_deriv) <= -coeff_2 * start_deriv) {
+        fprintf(stderr, "strong wolfe branch 2\n");
         return cur_step;
       }
-      if (new_deriv >= 0.0) {
+      if (new_deriv >= 0.0 && f_.eval(new_pt) > cur_val) {
+        fprintf(stderr, "strong wolfe branch 3\n");
         return zoom(x0, search_dir, cur_step, prev_step, coeff_1, coeff_2,
-                    new_pt, start_val, prev_val, start_deriv);
+                    new_pt, start_val, cur_val, start_deriv);
       }
       prev_step = cur_step;
       prev_val = cur_val;

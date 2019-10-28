@@ -21,7 +21,7 @@ TEST(random_test, zoom_ls) {
   constexpr auto e =
       x_1 * x_1 + x_1 * x_2 + x_2 * x_2 - 24.0 * x_1 - 75.0 * x_2 - 432.0;
   // c1 and c2 must be between 0 and 1, in increasing order
-  constexpr double c1 = 0.25, c2 = 0.75;
+  constexpr double c1 = 0.009765625, c2 = 0.96875;
 
   CNLMin optimizer(e);
   std::vector<double> new_pt(2);
@@ -30,7 +30,7 @@ TEST(random_test, zoom_ls) {
   rngAlg engine((std::random_device())());
   const double pdf_bound = 128.0;
   std::uniform_real_distribution<double> pdf(-pdf_bound, pdf_bound);
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 30; ++i) {
     // Ensure the line search satisfies the strong Wolfe conditions
     // That is,
     // 1) f(x_k + alpha p_k) <= f(x_k) + c_1 \alpha grad(f)(x_k)^T p_k
@@ -40,7 +40,8 @@ TEST(random_test, zoom_ls) {
     const std::vector<double> x0{pdf(engine), pdf(engine)};
     // Choose a search direction in a direction close to the gradient direction
     optimizer.grad_search_dir(x0, mini_dir);
-    const double theta = pdf(engine) * M_PI / (2.0 * pdf_bound) * 2.0 / 5.0;
+    const double theta = pdf(engine) * M_PI / (2.0 * pdf_bound) * 3.0 / 5.0;
+    fprintf(stderr, "theta: % .6e\n", theta);
     const std::vector<double> search_dir{
         (mini_dir[0] * std::cos(theta) + mini_dir[1] * std::sin(theta)),
         (-mini_dir[0] * std::sin(theta) + mini_dir[1] * std::cos(theta))};
@@ -125,7 +126,7 @@ TEST(random_test, strong_wolfe_ls) {
   rngAlg engine((std::random_device())());
   const double pdf_bound = 128.0;
   std::uniform_real_distribution<double> pdf(-pdf_bound, pdf_bound);
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 40; ++i) {
     // Ensure the line search satisfies the strong Wolfe conditions
     // That is,
     // 1) f(x_k + alpha p_k) <= f(x_k) + c_1 \alpha grad(f)(x_k)^T p_k
@@ -137,7 +138,8 @@ TEST(random_test, strong_wolfe_ls) {
     optimizer.grad_search_dir(x0, mini_dir);
     const double dx = x_min - x0[0], dy = y_min - x0[1],
                  dmag = std::sqrt(dx * dx + dy * dy), max_step = 2.0 * dmag;
-    const double theta = pdf(engine) * M_PI / (2.0 * pdf_bound) * 2.0 / 5.0;
+    const double theta = pdf(engine) * M_PI / (2.0 * pdf_bound) * 4.0 / 5.0;
+    fprintf(stderr, "theta: % .6e\n", theta);
     const std::vector<double> search_dir{
         (mini_dir[0] * std::cos(theta) + mini_dir[1] * std::sin(theta)),
         (-mini_dir[0] * std::sin(theta) + mini_dir[1] * std::cos(theta))};
@@ -155,5 +157,34 @@ TEST(random_test, strong_wolfe_ls) {
     // Check the Wolfe conditions
     ASSERT_LE(e.eval(new_pt), e.eval(x0) + c1 * step_size * deriv_val);
     ASSERT_GE(new_deriv, c2 * deriv_val);
+  }
+}
+
+TEST(random_test, fletcher_reeves_nl_cg) {
+  constexpr variable<double> x_1(0);
+  constexpr variable<double> x_2(1);
+  constexpr double x_min = -9.0;
+  constexpr double y_min = 42.0;
+  constexpr auto e =
+      x_1 * x_1 + x_1 * x_2 + x_2 * x_2 - 24.0 * x_1 - 75.0 * x_2 - 432.0;
+
+  CNLMin optimizer(e);
+  std::vector<double> new_pt(2);
+  std::vector<double> mini_dir(2);
+
+  rngAlg engine((std::random_device())());
+  const double pdf_bound = 128.0;
+  std::uniform_real_distribution<double> pdf(-pdf_bound, pdf_bound);
+  for (int i = 0; i < 10; ++i) {
+    const std::vector<double> x0{pdf(engine), pdf(engine)};
+    const std::vector<double> &minimum = optimizer.local_minimum(x0);
+    const double initial_dx = x0[0] - x_min, initial_dy = x0[1] - y_min,
+                 initial_dist = std::sqrt(initial_dx * initial_dx +
+                                          initial_dy * initial_dy),
+                 final_dx = minimum[0] - x_min, final_dy = minimum[1] - y_min,
+                 final_dist =
+                     std::sqrt(final_dx * final_dx + final_dy * final_dy);
+    fprintf(stderr, "% .6e, % .6e vs % .6e, % .6e\n", minimum[0], minimum[1],
+            initial_dist, final_dist);
   }
 }
