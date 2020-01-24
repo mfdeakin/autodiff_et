@@ -107,7 +107,7 @@ template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<
     is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::plus<>>,
     addition<lhs_expr_t, rhs_expr_t>>
-operator+(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
+operator+(const lhs_expr_t lhs, const rhs_expr_t rhs) {
   return addition<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
@@ -115,7 +115,7 @@ template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<
     is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::minus<>>,
     subtraction<lhs_expr_t, rhs_expr_t>>
-operator-(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
+operator-(const lhs_expr_t lhs, const rhs_expr_t rhs) {
   return subtraction<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
@@ -123,7 +123,7 @@ template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<
     is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::multiplies<>>,
     multiplication<lhs_expr_t, rhs_expr_t>>
-operator*(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
+operator*(const lhs_expr_t lhs, const rhs_expr_t rhs) {
   return multiplication<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
@@ -131,39 +131,7 @@ template <typename lhs_expr_t, typename rhs_expr_t>
 constexpr std::enable_if_t<
     is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::divides<>>,
     division<lhs_expr_t, rhs_expr_t>>
-operator/(const lhs_expr_t &lhs, const rhs_expr_t &rhs) {
-  return division<lhs_expr_t, rhs_expr_t>(lhs, rhs);
-}
-
-template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<
-    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::plus<>>,
-    addition<lhs_expr_t, rhs_expr_t>>
-operator+(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
-  return addition<lhs_expr_t, rhs_expr_t>(lhs, rhs);
-}
-
-template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<
-    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::minus<>>,
-    subtraction<lhs_expr_t, rhs_expr_t>>
-operator-(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
-  return subtraction<lhs_expr_t, rhs_expr_t>(lhs, rhs);
-}
-
-template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<
-    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::multiplies<>>,
-    multiplication<lhs_expr_t, rhs_expr_t>>
-operator*(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
-  return multiplication<lhs_expr_t, rhs_expr_t>(lhs, rhs);
-}
-
-template <typename lhs_expr_t, typename rhs_expr_t>
-constexpr std::enable_if_t<
-    is_valid_binary_expr<lhs_expr_t, rhs_expr_t, std::divides<>>,
-    division<lhs_expr_t, rhs_expr_t>>
-operator/(const lhs_expr_t &&lhs, const rhs_expr_t &&rhs) {
+operator/(const lhs_expr_t lhs, const rhs_expr_t rhs) {
   return division<lhs_expr_t, rhs_expr_t>(lhs, rhs);
 }
 
@@ -172,18 +140,10 @@ template <typename space_> class variable : public expr {
 public:
   using space = space_;
 
-  explicit constexpr variable(const id_t &&id) : id_(id) {}
+  explicit constexpr variable(const id_t id) : id_(id) {}
 
   // Computes the partial derivative with respect to the specified variable
-  constexpr space deriv(const id_t &deriv_id) const {
-    if (id() == deriv_id) {
-      return space(1);
-    } else {
-      return space(0);
-    }
-  }
-
-  constexpr space deriv(const id_t &&deriv_id) const {
+  constexpr space deriv(const id_t deriv_id) const {
     if (id() == deriv_id) {
       return space(1);
     } else {
@@ -440,14 +400,10 @@ public:
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
+  constexpr explicit negation(const expr_t val) : uop(val) {}
   constexpr explicit negation(const expr_t &val) : uop(val) {}
-  constexpr explicit negation(const expr_t &&val) : uop(val) {}
 
-  constexpr auto deriv(const id_t &deriv_id) const {
-    return -this->val_.deriv(deriv_id);
-  }
-
-  constexpr auto deriv(const id_t &&deriv_id) const {
+  constexpr auto deriv(const id_t deriv_id) const {
     return -this->val_.deriv(deriv_id);
   }
 
@@ -475,9 +431,7 @@ public:
 
   using space = binary_expr_domain<lhs_expr_t_, rhs_expr_t_>;
 
-  constexpr binary_op(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
-      : lhs(lhs_), rhs(rhs_) {}
-  constexpr binary_op(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+  constexpr binary_op(const lhs_expr_t lhs_, const rhs_expr_t rhs_)
       : lhs(lhs_), rhs(rhs_) {}
 
   template <typename... pairs> constexpr auto eval(pairs... list) const {
@@ -599,27 +553,10 @@ public:
   using this_t = addition<lhs_expr_t, rhs_expr_t>;
   using space = typename bop::space;
 
-  constexpr addition(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
-      : bop(lhs_, rhs_) {}
-  constexpr addition(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+  constexpr addition(const lhs_expr_t lhs_, const rhs_expr_t rhs_)
       : bop(lhs_, rhs_) {}
 
-  constexpr auto deriv(const id_t &deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
-        // Both the left and right expressions have non-zero derivatives
-        return this->lhs.deriv(deriv_id) + this->rhs.deriv(deriv_id);
-      } else {
-        // Only the left expression has a non-zero derivative
-        return this->lhs.deriv(deriv_id);
-      }
-    } else {
-      // Only the right expression has a non-zero derivative
-      return this->rhs.deriv(deriv_id);
-    }
-  }
-
-  constexpr auto deriv(const id_t &&deriv_id) const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
       if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
@@ -645,27 +582,10 @@ public:
   using rhs_expr_t = typename bop::rhs_expr_t;
   using space = typename bop::space;
 
-  constexpr subtraction(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
-      : bop(lhs_, rhs_) {}
-  constexpr subtraction(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+  constexpr subtraction(const lhs_expr_t lhs_, const rhs_expr_t rhs_)
       : bop(lhs_, rhs_) {}
 
-  constexpr auto deriv(const id_t &deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
-        // Both the left and right expressions have non-zero derivatives
-        return this->lhs.deriv(deriv_id) - this->rhs.deriv(deriv_id);
-      } else {
-        // Only the left expression has a non-zero derivative
-        return this->lhs.deriv(deriv_id);
-      }
-    } else {
-      // Only the right expression has a non-zero derivative
-      return -this->rhs.deriv(deriv_id);
-    }
-  }
-
-  constexpr auto deriv(const id_t &&deriv_id) const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
       if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
@@ -692,28 +612,10 @@ public:
   using rhs_expr_t = typename bop::rhs_expr_t;
   using space = typename bop::space;
 
-  constexpr multiplication(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
-      : bop(lhs_, rhs_) {}
-  constexpr multiplication(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+  constexpr multiplication(const lhs_expr_t lhs_, const rhs_expr_t rhs_)
       : bop(lhs_, rhs_) {}
 
-  constexpr auto deriv(const id_t &deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
-        // Both the left and right expressions have non-zero derivatives
-        return this->lhs.deriv(deriv_id) * this->rhs +
-               this->lhs * this->rhs.deriv(deriv_id);
-      } else {
-        // Only the left expression has a non-zero derivative
-        return this->lhs.deriv(deriv_id) * this->rhs;
-      }
-    } else {
-      // Only the right expression has a non-zero derivative
-      return this->lhs * this->rhs.deriv(deriv_id);
-    }
-  }
-
-  constexpr auto deriv(const id_t &&deriv_id) const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
       if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
@@ -740,28 +642,10 @@ public:
   using rhs_expr_t = typename bop::rhs_expr_t;
   using space = typename bop::space;
 
-  constexpr division(const lhs_expr_t &lhs_, const rhs_expr_t &rhs_)
-      : bop(lhs_, rhs_) {}
-  constexpr division(const lhs_expr_t &&lhs_, const rhs_expr_t &&rhs_)
+  constexpr division(const lhs_expr_t lhs_, const rhs_expr_t rhs_)
       : bop(lhs_, rhs_) {}
 
-  constexpr auto deriv(const id_t &deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
-        // Both the left and right expressions have non-zero derivatives
-        return this->lhs.deriv(deriv_id) / this->rhs -
-               this->lhs / (this->rhs * this->rhs) * this->rhs.deriv(deriv_id);
-      } else {
-        // Only the left expression has a non-zero derivative
-        return this->lhs.deriv(deriv_id) / this->rhs;
-      }
-    } else {
-      // Only the right expression has a non-zero derivative
-      return -this->lhs / (this->rhs * this->rhs) * this->rhs.deriv(deriv_id);
-    }
-  }
-
-  constexpr auto deriv(const id_t &&deriv_id) const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
       if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
