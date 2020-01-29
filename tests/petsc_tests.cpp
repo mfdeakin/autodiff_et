@@ -3,6 +3,7 @@
 
 #include "autodiff.hpp"
 #include "autodiff_optimize.hpp"
+#include "autodiff_tao.hpp"
 #include "autodiff_transcendental.hpp"
 
 #include <random>
@@ -65,6 +66,73 @@ TEST(polynomial_optimize, autodiff) {
     }
   }
 }
+
+constexpr auto rosenbrock_function_term(const double &alpha,
+                                        const auto_diff::variable<double> &x0,
+                                        const auto_diff::variable<double> &x1) {
+  return alpha * (x1 - x0 * x0) * (x1 - x0 * x0) + (1.0 - x0) * (1.0 - x0);
+}
+
+template <size_t dim, typename expr_t>
+constexpr auto rosenbrock_function_helper(const expr_t &e, const double &alpha,
+                                          const auto_diff::id_t var_id) {
+  const auto_diff::variable<double> x0(var_id), x1(var_id + 1);
+  const auto new_e = e + rosenbrock_function_term(alpha, x0, x1);
+  // More inefficient than it needs to be; we can do this in
+  // O(lg(n)) function generations rather than O(n)
+  if constexpr (dim == 2) {
+    return new_e;
+  } else {
+    return rosenbrock_function_helper<dim - 2>(new_e, alpha, var_id + 2);
+  }
+}
+
+template <size_t dim> constexpr auto rosenbrock_function(double alpha = 1.0) {
+  static_assert(
+      dim >= 2,
+      "The Rosenbrock function isn't defined for less than 2 dimensions");
+  static_assert(
+      dim % 2 == 0,
+      "The Rosenbrock function isn't defined for an odd number of dimensions");
+  const auto_diff::variable<double> x0(0), x1(1);
+  const auto e = rosenbrock_function_term(alpha, x0, x1);
+  if constexpr (dim == 2) {
+    return e;
+  } else {
+    return rosenbrock_function_helper<dim - 2>(e, alpha, 2);
+  }
+}
+
+template <typename optimizer>
+const std::vector<PetscScalar> &
+fail_solve_throw(optimizer &opt, const std::vector<PetscScalar> &starting_pt) {
+  EXPECT_NO_THROW(return opt.solve(starting_pt));
+  throw std::runtime_error("Error minimizing the Rosenbrock function");
+}
+
+template <size_t dim> void test_optimizer() {
+  constexpr auto f = rosenbrock_function<dim>(0.25);
+  auto_diff::optimize_tao::NL_Smooth_Optimizer<decltype(f)> opt(f, dim);
+
+  std::random_device rd;
+  rngAlg engine(rd());
+  std::uniform_real_distribution<double> pdf(-16.0, 16.0);
+
+  std::vector<PetscScalar> starting_pt(dim);
+  for (size_t i = 0; i < dim; ++i) {
+    starting_pt[i] = pdf(engine);
+  }
+
+  const std::vector<PetscScalar> &arg_min = fail_solve_throw(opt, starting_pt);
+  for (size_t i = 0; i < arg_min.size(); ++i) {
+		// Verify we're actually near an extremum
+		EXPECT_NEAR(f.deriv(i).eval(arg_min), 0.0, 1e-8);
+  }
+}
+
+TEST(nonlinear_optimizer, rosenbrock_function2) { test_optimizer<2>(); }
+TEST(nonlinear_optimizer, rosenbrock_function4) { test_optimizer<4>(); }
+TEST(nonlinear_optimizer, rosenbrock_function16) { test_optimizer<16>(); }
 
 int main(int argc, char **argv) {
   PetscInitializeNoArguments();

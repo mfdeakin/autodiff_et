@@ -3,6 +3,7 @@
 #define AUTODIFF_OPTIMIZE_HPP
 
 #include <algorithm>
+#include <cmath>
 #include <map>
 #include <vector>
 
