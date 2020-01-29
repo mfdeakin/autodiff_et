@@ -3,7 +3,10 @@
 
 #include "autodiff.hpp"
 #include "autodiff_optimize.hpp"
+#include "autodiff_tao.hpp"
 #include "autodiff_transcendental.hpp"
+
+#include <cstddef>
 
 #include <random>
 
