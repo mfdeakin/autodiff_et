@@ -16,7 +16,7 @@ find_package(MPI)
 find_package(PETSc)
 
 if(PETSc_FOUND AND MPI_FOUND)
-  add_library(cg_solver src/solver/SyPDSolver.cpp src/solver/NLOptimizer.cpp)
+  add_library(cg_solver src/solver/SyPDSolver.cpp)
   target_compile_definitions(cg_solver PUBLIC -DHAS_PETSC)
   set_target_properties(cg_solver PROPERTIES COMPILE_FLAGS "-g -std=c++17 -Wall")
   target_include_directories(cg_solver PUBLIC ${PETSC_INCLUDES} ${MPI_C_INCLUDE_DIRS})
