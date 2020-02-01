@@ -1,5 +1,7 @@
 
-#include "autodiff_optimize.hpp"
+#include "autodiff_tao.hpp"
+
+#include <cmath>
 
 #include <gtest/gtest.h>
 

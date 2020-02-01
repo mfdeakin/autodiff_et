@@ -52,9 +52,35 @@ TEST(polynomial_eval, autodiff) {
   EXPECT_EQ(x_quadratic.deriv(x.id()).eval(x.id(), 1.0), 4.0);
 }
 
+TEST(exp_eval, autodiff) {
+  constexpr variable<double> s(1), t(2), u(3), v(4);
+  constexpr auto stuv = sqrt(s) + cbrt(t) + exp(u) + log(v + 1.0);
+
+  EXPECT_EQ(stuv.eval(s.id(), 4.0), 2.0 + 1.0);
+  EXPECT_EQ(stuv.eval(t.id(), 27.0), 3.0 + 1.0);
+  EXPECT_NEAR(stuv.eval(u.id(), 3.0), M_E * M_E * M_E, 5e-15);
+  EXPECT_EQ(stuv.eval(v.id(), M_E * M_E * M_E * M_E - 1.0), 4.0 + 1.0);
+  EXPECT_EQ(stuv.eval(std::pair<auto_diff::id_t, double>{t.id(), 5.0},
+                      std::pair<auto_diff::id_t, double>{u.id(), 4.0},
+                      std::pair<auto_diff::id_t, double>{v.id(), 11.0},
+                      std::pair<auto_diff::id_t, double>{s.id(), 16.0}),
+            sqrt(16.0) + cbrt(5.0) + exp(4.0) + log(11.0 + 1.0));
+
+  std::random_device rd;
+  rngAlg engine(rd());
+  std::uniform_real_distribution<double> pdf(0.0, 16.0);
+  for (int i = 0; i < 1000; ++i) {
+    const double rval = pdf(engine);
+    EXPECT_NEAR(stuv.eval(s.id(), rval), sqrt(rval) + 1.0, 5e-16);
+    EXPECT_NEAR(stuv.eval(t.id(), rval), cbrt(rval) + 1.0, 5e-16);
+    EXPECT_NEAR(stuv.eval(u.id(), rval), exp(rval), 5e-16);
+    EXPECT_NEAR(stuv.eval(v.id(), rval), log(rval + 1.0) + 1.0, 5e-16);
+  }
+}
+
 TEST(trig_eval, autodiff) {
   constexpr variable<double> s(1), t(2);
-  constexpr auto st = Sin(t) + Sin(s);
+  constexpr auto st = sin(t) + sin(s);
   EXPECT_EQ(st.eval(t.id(), 0.0), 0.0);
   EXPECT_EQ(st.eval(t.id(), M_PI / 2.0), 1.0);
   EXPECT_NEAR(st.eval(t.id(), M_PI), 0.0, 2e-16);
@@ -62,11 +88,11 @@ TEST(trig_eval, autodiff) {
                       std::pair<auto_diff::id_t, double>{s.id(), M_PI}),
               0.0, 4e-16);
   EXPECT_NEAR(st.eval(t.id(), M_PI, s.id(), M_PI), 0.0, 4e-16);
-  const Cos<variable<double>> ct = Cos(t);
+  const Cos<variable<double>> ct = cos(t);
   EXPECT_EQ(ct.eval(t.id(), 0.0), 1.0);
   EXPECT_NEAR(ct.eval(t.id(), M_PI / 2.0), 0.0, 1e-16);
   EXPECT_NEAR(ct.eval(t.id(), M_PI), -1.0, 1e-16);
-  const Tan<variable<double>> tt = Tan(t);
+  const Tan<variable<double>> tt = tan(t);
   EXPECT_EQ(tt.eval(t.id(), 0.0), 0.0);
   EXPECT_NEAR(tt.eval(t.id(), M_PI), 0.0, 2e-16);
 
@@ -78,6 +104,26 @@ TEST(trig_eval, autodiff) {
     EXPECT_EQ(st.eval(t.id(), rval), std::sin(rval));
     EXPECT_EQ(ct.eval(t.id(), rval), std::cos(rval));
     EXPECT_EQ(tt.eval(t.id(), rval), std::tan(rval));
+  }
+}
+
+TEST(invtrig_eval, autodiff) {
+  constexpr variable<double> s(1);
+  EXPECT_EQ(asin(s).eval(s.id(), 0.0), 0.0);
+  EXPECT_EQ(asin(s).eval(s.id(), 1.0), M_PI / 2.0);
+  EXPECT_EQ(acos(s).eval(s.id(), 0.0), M_PI / 2.0);
+  EXPECT_EQ(acos(s).eval(s.id(), 1.0), 0.0);
+  EXPECT_EQ(atan(s).eval(s.id(), 0.0), 0.0);
+  EXPECT_EQ(atan(s).eval(s.id(), 1.0), M_PI / 4.0);
+
+  std::random_device rd;
+  rngAlg engine(rd());
+  std::uniform_real_distribution<double> pdf(-1.0, 1.0);
+  for (int i = 0; i < 1000; ++i) {
+    const double rval = pdf(engine);
+    EXPECT_EQ(asin(s).eval(s.id(), rval), std::asin(rval));
+    EXPECT_EQ(acos(s).eval(s.id(), rval), std::acos(rval));
+    EXPECT_EQ(atan(s).eval(s.id(), rval), std::atan(rval));
   }
 }
 

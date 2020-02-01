@@ -64,13 +64,66 @@ template <typename expr_t_> class Cbrt;
 template <typename expr_t_> class Exp;
 template <typename expr_t_> class Log;
 
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Sqrt<expr_t> sqrt(expr_t e) {
+  return Sqrt<expr_t>(e);
+};
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Cbrt<expr_t> cbrt(expr_t e) {
+  return Cbrt<expr_t>(e);
+};
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Exp<expr_t> exp(expr_t e) {
+  return Exp<expr_t>(e);
+};
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Log<expr_t> log(expr_t e) {
+  return Log<expr_t>(e);
+};
+
 template <typename expr_t_> class Sin;
 template <typename expr_t_> class Cos;
 template <typename expr_t_> class Tan;
 
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Sin<expr_t> sin(expr_t e) {
+  return Sin(e);
+};
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Cos<expr_t> cos(expr_t e) {
+  return Cos(e);
+};
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Tan<expr_t> tan(expr_t e) {
+  return Tan(e);
+};
+
 template <typename expr_t_> class Asin;
 template <typename expr_t_> class Acos;
 template <typename expr_t_> class Atan;
+
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Asin<expr_t> asin(expr_t e) {
+  return Asin<expr_t>(e);
+};
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Acos<expr_t> acos(expr_t e) {
+  return Acos<expr_t>(e);
+};
+template <typename expr_t, typename enable_ = std::enable_if_t<
+                               std::is_base_of_v<expr, expr_t>, void>>
+static constexpr Atan<expr_t> atan(expr_t e) {
+  return Atan<expr_t>(e);
+};
 
 template <typename lhs_expr_t_, typename rhs_expr_t_> class Pow;
 
@@ -119,9 +172,12 @@ public:
 };
 
 template <typename expr_t_>
-class Exp : public unary_op<expr_t_, typename expr_domain<expr_t_>::space> {
+class Exp
+    : public unary_op<expr_t_,
+                      transcendental::exp_function<expr_domain<expr_t_>>> {
 public:
-  using uop = unary_op<expr_t_, typename expr_domain<expr_t_>::space>;
+  using uop =
+      unary_op<expr_t_, transcendental::exp_function<expr_domain<expr_t_>>>;
   using expr_t = typename uop::expr_t;
   using space = typename uop::space;
 
