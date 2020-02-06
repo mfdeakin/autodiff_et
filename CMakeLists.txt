@@ -25,7 +25,7 @@ if(PETSc_FOUND AND MPI_FOUND)
   target_compile_definitions(petsc_tests PUBLIC -DHAS_PETSC)
   set_target_properties(petsc_tests PROPERTIES COMPILE_FLAGS "-g -std=c++17 -Wall")
   target_include_directories(petsc_tests PUBLIC ${PETSC_INCLUDES} ${MPI_C_INCLUDE_DIRS})
-  target_link_libraries(petsc_tests PUBLIC cg_solver ${PETSC_LIBRARIES} gtest)
+  target_link_libraries(petsc_tests PUBLIC cg_solver ${PETSC_LIBRARIES} gtest pthread)
   add_test(petsc_test petsc_tests)
 endif(PETSc_FOUND AND MPI_FOUND)
 
