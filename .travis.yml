@@ -15,6 +15,7 @@ addons:
     packages:
     - g++-7
     - libgtest-dev
+    - petsc-dev
 
 git:
   submodules: false
@@ -44,10 +45,11 @@ install:
 - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION pybind11
 - source activate test-environment
 - conda install pybind11 -c conda-forge
+- git clone https://github.com/jedbrown/cmake-modules cmake
 
 script:
 # Potential directories:
-- cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -fsanitize=address" ./
+- cmake -D CMAKE_BUILD_TYPE=Debug -D CMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -fsanitize=address" -D PETSC_EXECUTABLE_RUNS=ON ./
 - make VERBOSE=1 -j 4
 - ctest -VV
 
