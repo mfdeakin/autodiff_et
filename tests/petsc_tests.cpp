@@ -6,6 +6,8 @@
 #include "autodiff_tao.hpp"
 #include "autodiff_transcendental.hpp"
 
+#include "petsc_helpers.hpp"
+
 #include <random>
 
 #include <gtest/gtest.h>
@@ -125,8 +127,8 @@ template <size_t dim> void test_optimizer() {
 
   const std::vector<PetscScalar> &arg_min = fail_solve_throw(opt, starting_pt);
   for (size_t i = 0; i < arg_min.size(); ++i) {
-		// Verify we're actually near an extremum
-		EXPECT_NEAR(f.deriv(i).eval(arg_min), 0.0, 1e-8);
+    // Verify we're actually near an extremum
+    EXPECT_NEAR(f.deriv(i).eval(arg_min), 0.0, 1e-8);
   }
 }
 
@@ -135,7 +137,7 @@ TEST(nonlinear_optimizer, rosenbrock_function4) { test_optimizer<4>(); }
 TEST(nonlinear_optimizer, rosenbrock_function16) { test_optimizer<16>(); }
 
 int main(int argc, char **argv) {
-  PetscInitializeNoArguments();
+  petsc_helpers::PetscScope p;
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
