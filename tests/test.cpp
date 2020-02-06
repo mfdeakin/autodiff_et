@@ -13,6 +13,17 @@ using namespace auto_diff;
 
 using rngAlg = std::mt19937_64;
 
+template <typename expr_t>
+void finitediff_test(const expr_t &e, const variable<double> v,
+                     const double xc) {
+  constexpr double eps = std::numeric_limits<double>::epsilon();
+  const double x0 = xc * (1.0 - 1e-6);
+  const double x1 = xc * (1.0 + 1e-6);
+  const double delta = x1 - x0;
+  const double fdiff = (e.eval(v, x1) - e.eval(v, x0)) / delta;
+  EXPECT_NEAR(e.deriv(v.id()).eval(v, xc), fdiff, std::abs(fdiff) * eps * 1e12);
+}
+
 TEST(polynomial_eval, autodiff) {
   std::random_device rd;
   rngAlg engine(rd());
@@ -68,13 +79,20 @@ TEST(exp_eval, autodiff) {
 
   std::random_device rd;
   rngAlg engine(rd());
-  std::uniform_real_distribution<double> pdf(0.0, 16.0);
+  std::uniform_real_distribution<double> pdf(0.0, 128.0);
   for (int i = 0; i < 1000; ++i) {
     const double rval = pdf(engine);
     EXPECT_NEAR(stuv.eval(s.id(), rval), sqrt(rval) + 1.0, 5e-16);
     EXPECT_NEAR(stuv.eval(t.id(), rval), cbrt(rval) + 1.0, 5e-16);
-    EXPECT_NEAR(stuv.eval(u.id(), rval), exp(rval), 5e-16);
+    EXPECT_NEAR(stuv.eval(u.id(), rval / 8.0), exp(rval / 8.0), 5e-16);
     EXPECT_NEAR(stuv.eval(v.id(), rval), log(rval + 1.0) + 1.0, 5e-16);
+
+    EXPECT_EQ(sqrt(4.0 * s).deriv(s.id()).eval(s, rval), 1.0 / sqrt(rval));
+    EXPECT_NEAR(cbrt(12.0 * s).deriv(s.id()).eval(s, rval),
+                4.0 / (cbrt(12.0 * rval) * cbrt(12.0 * rval)), 5e-13);
+    EXPECT_EQ(exp(4.0 * s).deriv(s.id()).eval(s, rval), 4.0 * exp(4.0 * rval));
+    EXPECT_EQ(log(4.0 * s + 1.0).deriv(s.id()).eval(s, rval),
+              4.0 / (4.0 * rval + 1.0));
   }
 }
 
@@ -101,29 +119,43 @@ TEST(trig_eval, autodiff) {
   std::uniform_real_distribution<double> pdf(-1024.0, 1024.0);
   for (int i = 0; i < 1000; ++i) {
     const double rval = pdf(engine);
-    EXPECT_EQ(st.eval(t.id(), rval), std::sin(rval));
-    EXPECT_EQ(ct.eval(t.id(), rval), std::cos(rval));
-    EXPECT_EQ(tt.eval(t.id(), rval), std::tan(rval));
+    EXPECT_EQ(st.eval(t, rval), std::sin(rval));
+    EXPECT_EQ(st.deriv(t.id()).eval(t, rval), std::cos(rval));
+    EXPECT_EQ(ct.eval(t, rval), std::cos(rval));
+    EXPECT_EQ(ct.deriv(t.id()).eval(t, rval), -std::sin(rval));
+    EXPECT_EQ(tt.eval(t, rval), std::tan(rval));
+    EXPECT_EQ(tt.deriv(t.id()).eval(t, rval),
+              1.0 / (std::cos(rval) * std::cos(rval)));
   }
 }
 
 TEST(invtrig_eval, autodiff) {
   constexpr variable<double> s(1);
-  EXPECT_EQ(asin(s).eval(s.id(), 0.0), 0.0);
-  EXPECT_EQ(asin(s).eval(s.id(), 1.0), M_PI / 2.0);
-  EXPECT_EQ(acos(s).eval(s.id(), 0.0), M_PI / 2.0);
-  EXPECT_EQ(acos(s).eval(s.id(), 1.0), 0.0);
-  EXPECT_EQ(atan(s).eval(s.id(), 0.0), 0.0);
-  EXPECT_EQ(atan(s).eval(s.id(), 1.0), M_PI / 4.0);
+  EXPECT_EQ(asin(s).eval(s, 0.0), 0.0);
+  EXPECT_EQ(asin(s).eval(s, 1.0), M_PI / 2.0);
+  EXPECT_EQ(acos(s).eval(s, 0.0), M_PI / 2.0);
+  EXPECT_EQ(acos(s).eval(s, 1.0), 0.0);
+  EXPECT_EQ(atan(s).eval(s, 0.0), 0.0);
+  EXPECT_EQ(atan(s).eval(s, 1.0), M_PI / 4.0);
 
   std::random_device rd;
   rngAlg engine(rd());
-  std::uniform_real_distribution<double> pdf(-1.0, 1.0);
+  std::uniform_real_distribution<double> pdf(-1.0 + 0.06125, 1.0 - 0.06125);
   for (int i = 0; i < 1000; ++i) {
-    const double rval = pdf(engine);
-    EXPECT_EQ(asin(s).eval(s.id(), rval), std::asin(rval));
-    EXPECT_EQ(acos(s).eval(s.id(), rval), std::acos(rval));
-    EXPECT_EQ(atan(s).eval(s.id(), rval), std::atan(rval));
+    const double rval = static_cast<float>(pdf(engine));
+    EXPECT_EQ(asin(s).eval(s, rval), std::asin(rval));
+    EXPECT_EQ(asin(s).deriv(s.id()).eval(s, rval),
+              1.0 / std::sqrt(1.0 - rval * rval));
+    finitediff_test(asin(s), s, rval);
+
+    EXPECT_EQ(acos(s).eval(s, rval), std::acos(rval));
+    EXPECT_EQ(acos(s).deriv(s.id()).eval(s, rval),
+              -1.0 / std::sqrt(1.0 - rval * rval));
+    finitediff_test(acos(s), s, rval);
+
+    EXPECT_EQ(atan(s).eval(s, rval), std::atan(rval));
+    EXPECT_EQ(atan(s).deriv(s.id()).eval(s, rval), 1.0 / (1.0 + rval * rval));
+    finitediff_test(atan(s), s, rval);
   }
 }
 

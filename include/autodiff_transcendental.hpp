@@ -126,6 +126,15 @@ static constexpr Atan<expr_t> atan(expr_t e) {
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_> class Pow;
+template <
+    typename lhs_expr_t, typename rhs_expr_t,
+    typename enable_ = std::enable_if_t<std::is_base_of_v<expr, lhs_expr_t> ||
+                                            std::is_base_of_v<expr, rhs_expr_t>,
+                                        void>>
+static constexpr Pow<lhs_expr_t, rhs_expr_t> pow(lhs_expr_t lhs,
+                                                 rhs_expr_t rhs) {
+  return Pow<lhs_expr_t, rhs_expr_t>(lhs, rhs);
+};
 
 // Roots, expoonents, logarithms
 
@@ -141,9 +150,9 @@ public:
 
   constexpr explicit Sqrt(expr_t val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return this->val_.deriv() / (space(2) * *this);
+      return this->val_.deriv(deriv_id) / (space(2) * *this);
     } else {
       return space(0);
     }
@@ -162,9 +171,9 @@ public:
 
   constexpr explicit Cbrt(expr_t val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return this->val_.deriv() / (space(3) * Pow(*this, space(2)));
+      return this->val_.deriv(deriv_id) / (space(3) * *this * *this);
     } else {
       return space(0);
     }
@@ -183,9 +192,9 @@ public:
 
   constexpr explicit Exp(expr_t val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return *this * this->val_.deriv();
+      return *this * this->val_.deriv(deriv_id);
     } else {
       return space(0);
     }
@@ -204,9 +213,9 @@ public:
 
   constexpr explicit Log(expr_t val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return this->val_.deriv() / this->val_;
+      return this->val_.deriv(deriv_id) / this->val_;
     } else {
       return space(0);
     }
@@ -227,9 +236,9 @@ public:
 
   constexpr explicit Sin(expr_t_ val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Cos(this->val_) * this->val_.deriv();
+      return Cos(this->val_) * this->val_.deriv(deriv_id);
     } else {
       return space(0);
     }
@@ -248,10 +257,10 @@ public:
 
   constexpr explicit Cos(expr_t_ val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
       // Clang weirdness requires the leading space(0)
-      return space(0) - Sin(this->val_) * this->val_.deriv();
+      return space(0) - Sin(this->val_) * this->val_.deriv(deriv_id);
     } else {
       return space(0);
     }
@@ -270,10 +279,9 @@ public:
 
   constexpr explicit Tan(expr_t_ val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return (Pow<Tan<expr_t>, space>(Tan(this->val_), space(2)) + 1) *
-             this->val_.deriv();
+      return this->val_.deriv(deriv_id) / (cos(this->val_) * cos(this->val_));
     } else {
       return space(0);
     }
@@ -294,9 +302,10 @@ public:
 
   constexpr explicit Asin(expr_t_ val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return -1 / sqrt(1 - pow(this->val_, space(2)));
+      return this->val_.deriv(deriv_id) /
+             sqrt(space(1.0) - this->val_ * this->val_);
     } else {
       return space(0);
     }
@@ -315,9 +324,10 @@ public:
 
   constexpr explicit Acos(expr_t val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return 1 / sqrt(1 - pow(this->val_, space(2)));
+      return -(this->val_.deriv(deriv_id) /
+							 sqrt(space(1.0) - this->val_ * this->val_));
     } else {
       return space(0);
     }
@@ -336,9 +346,10 @@ public:
 
   constexpr explicit Atan(expr_t val) : uop(val) {}
 
-  constexpr auto deriv() const {
+  constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return 1 / (Pow(this->val_, space(2)) + 1);
+      return this->val_.deriv(deriv_id) /
+             (this->val_ * this->val_ + space(1.0));
     } else {
       return space(0);
     }
@@ -353,16 +364,28 @@ class Pow
 public:
   using bop = binary_op<lhs_expr_t_, rhs_expr_t_,
                         transcendental::pow_function<expr_domain<lhs_expr_t_>>>;
-  using expr_t = typename bop::expr_t;
+  using lhs_expr_t = typename bop::lhs_expr_t;
+  using rhs_expr_t = typename bop::rhs_expr_t;
   using space = typename bop::space;
 
-  constexpr explicit Pow(expr_t val) : bop(val) {}
+  constexpr explicit Pow(lhs_expr_t base, rhs_expr_t exp) : bop(base, exp) {}
 
-  constexpr auto deriv() const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
-      return Pow(this->lhs, this->rhs) * this->lhs.deriv() +
-             Pow(this->lhs, this->rhs - 1) * this->lhs.deriv();
+  constexpr auto deriv(const id_t deriv_id) const {
+    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+        return Log(this->lhs) * Pow(this->lhs, this->rhs) *
+                   this->rhs.deriv(deriv_id) +
+               Pow(this->lhs, this->rhs - 1) * this->rhs *
+                   this->lhs.deriv(deriv_id);
+      } else {
+        return Pow(this->lhs, this->rhs - 1) * this->rhs *
+               this->lhs.deriv(deriv_id);
+      }
+    } else if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+      return Log(this->lhs) * Pow(this->lhs, this->rhs) *
+             this->rhs.deriv(deriv_id);
     } else {
+      // Should never happen
       return space(0);
     }
   }
