@@ -14,14 +14,22 @@ using namespace auto_diff;
 using rngAlg = std::mt19937_64;
 
 template <typename expr_t>
-void finitediff_test(const expr_t &e, const variable<double> v,
-                     const double xc) {
+void finitediff_test(const expr_t &e, const variable<double> v, const double xc,
+                     const std::string testname) {
   constexpr double eps = std::numeric_limits<double>::epsilon();
   const double x0 = xc * (1.0 - 1e-6);
   const double x1 = xc * (1.0 + 1e-6);
   const double delta = x1 - x0;
   const double fdiff = (e.eval(v, x1) - e.eval(v, x0)) / delta;
-  EXPECT_NEAR(e.deriv(v.id()).eval(v, xc), fdiff, std::abs(fdiff) * eps * 1e12);
+  const double imdiff = e.deriv(v.id()).eval(v, xc);
+  // We want to ensure the relative difference isn't too large, while also
+  // ensuring the minimum relative distance isn't too small as occurs when the
+  // function is nearly flat
+  // ie, finite difference on cos(x) has large relative error when x is near 0;
+  // tests have shown the absolute error to be as high as 9e-5 when the relative
+  // error is nearly unbounded (fdiff is essentially 0)
+  EXPECT_NEAR(imdiff, fdiff, std::abs(fdiff) * eps * 1e12 + 1e-4)
+      << "Failed: " << testname << " at " << xc << "\n";
 }
 
 TEST(polynomial_eval, autodiff) {
@@ -88,11 +96,24 @@ TEST(exp_eval, autodiff) {
     EXPECT_NEAR(stuv.eval(v.id(), rval), log(rval + 1.0) + 1.0, 5e-16);
 
     EXPECT_EQ(sqrt(4.0 * s).deriv(s.id()).eval(s, rval), 1.0 / sqrt(rval));
+    finitediff_test(sqrt(4.0 * s), s, rval, "Sqrt");
     EXPECT_NEAR(cbrt(12.0 * s).deriv(s.id()).eval(s, rval),
                 4.0 / (cbrt(12.0 * rval) * cbrt(12.0 * rval)), 5e-13);
+    // Test error to deal with
+    // The difference between cbrt(12.0 * s).deriv(s.id()).eval(s, rval) and 4.0
+    // / (cbrt(12.0 * rval) * cbrt(12.0 * rval)) is 1.8189894035458565e-12,
+    // which exceeds 5e-13, where
+    // cbrt(12.0 * s).deriv(s.id()).eval(s, rval) evaluates to
+    // 8371.7685990041518,
+    // 4.0 / (cbrt(12.0 * rval) * cbrt(12.0 * rval)) evaluates to
+    // 8371.76859900415, and
+    // 5e-13 evaluates to 4.9999999999999999e-13.
+    finitediff_test(cbrt(4.0 * s), s, rval, "Cbrt");
     EXPECT_EQ(exp(4.0 * s).deriv(s.id()).eval(s, rval), 4.0 * exp(4.0 * rval));
+    finitediff_test(exp(4.0 * s), s, rval, "Exp");
     EXPECT_EQ(log(4.0 * s + 1.0).deriv(s.id()).eval(s, rval),
               4.0 / (4.0 * rval + 1.0));
+    finitediff_test(log(4.0 * s + 1.0), s, rval, "Log");
   }
 }
 
@@ -116,14 +137,28 @@ TEST(trig_eval, autodiff) {
 
   std::random_device rd;
   rngAlg engine(rd());
-  std::uniform_real_distribution<double> pdf(-1024.0, 1024.0);
+  std::uniform_real_distribution<double> pdf(-7.0, 7.0);
   for (int i = 0; i < 1000; ++i) {
-    const double rval = pdf(engine);
+    const double rval = [&pdf, &engine]() {
+      // We need to make certain that rval isn't too close to pi/2 or 3pi/2 for
+      // the finite difference test with tan
+      const double v = pdf(engine);
+      for (auto check : {M_PI / 2.0, 3.0 * M_PI / 2.0}) {
+        if ((std::abs(std::abs(v) - check)) < 1e-2) {
+          return v + std::copysign(1.0, std::abs(v) - check) *
+                         std::copysign(1.0, v) * 1e-2;
+        }
+      }
+      return v;
+    }();
     EXPECT_EQ(st.eval(t, rval), std::sin(rval));
+    finitediff_test(st, t, rval, "Sin");
     EXPECT_EQ(st.deriv(t.id()).eval(t, rval), std::cos(rval));
     EXPECT_EQ(ct.eval(t, rval), std::cos(rval));
+    finitediff_test(ct, t, rval, "Cos");
     EXPECT_EQ(ct.deriv(t.id()).eval(t, rval), -std::sin(rval));
     EXPECT_EQ(tt.eval(t, rval), std::tan(rval));
+    finitediff_test(tt, t, rval, "Tan");
     EXPECT_EQ(tt.deriv(t.id()).eval(t, rval),
               1.0 / (std::cos(rval) * std::cos(rval)));
   }
@@ -142,20 +177,54 @@ TEST(invtrig_eval, autodiff) {
   rngAlg engine(rd());
   std::uniform_real_distribution<double> pdf(-1.0 + 0.06125, 1.0 - 0.06125);
   for (int i = 0; i < 1000; ++i) {
-    const double rval = static_cast<float>(pdf(engine));
+    const double rval = pdf(engine);
     EXPECT_EQ(asin(s).eval(s, rval), std::asin(rval));
     EXPECT_EQ(asin(s).deriv(s.id()).eval(s, rval),
               1.0 / std::sqrt(1.0 - rval * rval));
-    finitediff_test(asin(s), s, rval);
+    finitediff_test(asin(s), s, rval, "ASin");
 
     EXPECT_EQ(acos(s).eval(s, rval), std::acos(rval));
     EXPECT_EQ(acos(s).deriv(s.id()).eval(s, rval),
               -1.0 / std::sqrt(1.0 - rval * rval));
-    finitediff_test(acos(s), s, rval);
+    finitediff_test(acos(s), s, rval, "ACos");
 
     EXPECT_EQ(atan(s).eval(s, rval), std::atan(rval));
     EXPECT_EQ(atan(s).deriv(s.id()).eval(s, rval), 1.0 / (1.0 + rval * rval));
-    finitediff_test(atan(s), s, rval);
+    finitediff_test(atan(s), s, rval, "ATan");
+  }
+}
+
+TEST(pow_eval, autodiff) {
+  constexpr variable<double> s(1), t(2);
+  // Sanity checks for the three exponential forms
+  constexpr auto p1 = pow(s, t);
+  EXPECT_EQ(p1.eval(s, 1.0), 1.0);
+  EXPECT_EQ(p1.eval(s, 1.0, 2, 4.0), 1.0);
+  EXPECT_EQ(p1.eval(s, 2.0, 2, 4.0), 16.0);
+  EXPECT_EQ(p1.deriv(s.id()).eval(s, 2.0, t, 4.0), 4.0 * 2.0 * 2.0 * 2.0);
+
+  constexpr auto p2 = pow(s, 3.0);
+  EXPECT_EQ(p2.eval(s, 1.0), 1.0);
+  EXPECT_EQ(p2.eval(s, 2.0), 8.0);
+  EXPECT_EQ(p2.eval(s, -3.0), -27.0);
+  EXPECT_EQ(p2.deriv(s.id()).eval(s, -3.0), 27.0);
+
+  constexpr auto p3 = pow(3.0, t);
+  EXPECT_EQ(p3.eval(t, 1.0), 3.0);
+  EXPECT_EQ(p3.eval(t, 2.0), 9.0);
+  EXPECT_EQ(p3.eval(t, -3.0), 1.0 / 27.0);
+  EXPECT_EQ(p3.deriv(t.id()).eval(t, -3.0),
+            std::log(3.0) * std::pow(3.0, -3.0));
+
+  std::random_device rd;
+  rngAlg engine(rd());
+  std::uniform_real_distribution<double> pdf(0.001, 8.0);
+  for (int i = 0; i < 1000; ++i) {
+    const double base = pdf(engine);
+    const double exponent = pdf(engine);
+    EXPECT_EQ(p1.eval(s, base, t, exponent), std::pow(base, exponent));
+    EXPECT_EQ(p1.deriv(s.id()).eval(s, base, t, exponent),
+              std::pow(base, exponent - 1.0));
   }
 }
 

@@ -327,7 +327,7 @@ public:
   constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, expr_t>) {
       return -(this->val_.deriv(deriv_id) /
-							 sqrt(space(1.0) - this->val_ * this->val_));
+               sqrt(space(1.0) - this->val_ * this->val_));
     } else {
       return space(0);
     }
@@ -373,16 +373,18 @@ public:
   constexpr auto deriv(const id_t deriv_id) const {
     if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
       if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
-        return Log(this->lhs) * Pow(this->lhs, this->rhs) *
+        const auto rhs_pow_term = this->rhs - space(1);
+        return Log<lhs_expr_t>(this->lhs) * Pow(this->lhs, this->rhs) *
                    this->rhs.deriv(deriv_id) +
-               Pow(this->lhs, this->rhs - 1) * this->rhs *
-                   this->lhs.deriv(deriv_id);
+               Pow<lhs_expr_t, decltype(rhs_pow_term)>(this->lhs,
+                                                       rhs_pow_term) *
+                   this->rhs * this->lhs.deriv(deriv_id);
       } else {
-        return Pow(this->lhs, this->rhs - 1) * this->rhs *
+        return Pow(this->lhs, this->rhs - space(1)) * this->rhs *
                this->lhs.deriv(deriv_id);
       }
     } else if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
-      return Log(this->lhs) * Pow(this->lhs, this->rhs) *
+      return std::log(this->lhs) * Pow(this->lhs, this->rhs) *
              this->rhs.deriv(deriv_id);
     } else {
       // Should never happen
