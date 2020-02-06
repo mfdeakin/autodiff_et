@@ -218,13 +218,16 @@ TEST(pow_eval, autodiff) {
 
   std::random_device rd;
   rngAlg engine(rd());
-  std::uniform_real_distribution<double> pdf(0.001, 8.0);
+  std::uniform_real_distribution<double> base_pdf(0.001, 30.0);
+  std::uniform_real_distribution<double> exp_pdf(-8.0, 8.0);
   for (int i = 0; i < 1000; ++i) {
-    const double base = pdf(engine);
-    const double exponent = pdf(engine);
+    const double base = base_pdf(engine);
+    const double exponent = exp_pdf(engine);
     EXPECT_EQ(p1.eval(s, base, t, exponent), std::pow(base, exponent));
     EXPECT_EQ(p1.deriv(s.id()).eval(s, base, t, exponent),
-              std::pow(base, exponent - 1.0));
+              exponent * std::pow(base, exponent - 1.0));
+		finitediff_test(p2, s, base, "x^3");
+		finitediff_test(p3, t, exponent, "3^x");
   }
 }
 
