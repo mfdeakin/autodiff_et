@@ -39,16 +39,33 @@ struct expr_domain_impl<expr_t, std::void_t<typename expr_t::space>> {
 template <typename expr_t>
 using expr_domain = typename expr_domain_impl<expr_t>::space;
 
+// Everything that is an expression should define an alias called "space"
+// indicating the domain the expression acts on
+// Expressions should also publically inherit from expr
+class expr {};
+
 // This determines the space of the variables in the binary expression. If they
 // are not the same, compilation is halted
 // It may make sense to use the mathematical approach to domains, but the
 // machinery required is more substantial than I'd like to deal with currently
-template <typename lhs_expr_t, typename rhs_expr_t>
+template <typename lhs_expr_t, typename rhs_expr_t,
+          typename enabler =
+              std::enable_if_t<std::is_base_of_v<expr, lhs_expr_t> ||
+                                   std::is_base_of_v<expr, rhs_expr_t>,
+                               void>>
 struct binary_expr_domain_impl {
   static_assert(
-      std::is_same_v<expr_domain<lhs_expr_t>, expr_domain<rhs_expr_t>>,
+      std::is_same_v<expr_domain<lhs_expr_t>, expr_domain<rhs_expr_t>> ||
+          (!std::is_base_of_v<expr, lhs_expr_t> &&
+           std::is_convertible_v<expr_domain<lhs_expr_t>,
+                                 expr_domain<rhs_expr_t>>) ||
+          (!std::is_base_of_v<expr, rhs_expr_t> &&
+           std::is_convertible_v<expr_domain<rhs_expr_t>,
+                                 expr_domain<lhs_expr_t>>),
       "Invalid domains provided for the binary operands");
-  using space = expr_domain<lhs_expr_t>;
+  using space =
+      std::conditional_t<std::is_base_of_v<expr, lhs_expr_t>,
+                         expr_domain<lhs_expr_t>, expr_domain<rhs_expr_t>>;
 };
 
 template <typename lhs_expr_t, typename rhs_expr_t>
@@ -75,11 +92,6 @@ static constexpr bool is_indexable = is_indexable_impl<domain>::value;
 
 template <typename domain>
 using index_t = typename is_indexable_impl<domain>::type;
-
-// Everything that is an expression should define an alias called "space"
-// indicating the domain the expression acts on
-// Expressions should also publically inherit from expr
-class expr {};
 
 template <typename sub_expr_t>
 constexpr std::enable_if_t<std::is_base_of_v<expr, sub_expr_t>,
