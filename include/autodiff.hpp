@@ -151,10 +151,24 @@ public:
     }
   }
 
+  constexpr space deriv(const variable<space> deriv_var) const {
+    return deriv(deriv_var.id());
+  }
+
   // Evaluate the variable with the list of pairs specifying the variable and
   // the value to replace that variable with
   // Variables that are not specified are assigned the additive identity for
   // their space
+  template <typename... pairs>
+  constexpr space eval(const std::pair<variable<space>, space> head,
+                       pairs... tail) const {
+    return eval({head.first.id(), head.second});
+  }
+
+  constexpr space eval(const std::pair<variable<space>, space> head) const {
+    return eval({head.first.id(), head.second});
+  }
+
   template <typename... pairs>
   constexpr space eval(const std::pair<id_t, space> head, pairs... tail) const {
     const auto [eval_id, v] = head;
@@ -190,6 +204,12 @@ public:
     }
   }
 
+  template <typename... pairs>
+  constexpr space eval(const variable<space> eval_var, space v,
+                       pairs... tail) const {
+    return eval(eval_var.id(), v, tail...);
+  }
+
   constexpr space eval(const id_t eval_id, space v) const {
     if (eval_id == id()) {
       return v;
@@ -198,6 +218,10 @@ public:
     } else {
       return space(0);
     }
+  }
+
+  constexpr space eval(const variable<space> eval_var, space v) const {
+    return eval(eval_var.id(), v);
   }
 
   // A version which accepts vectors, where the id is the entry in the vector
@@ -213,7 +237,8 @@ public:
     }
   }
 
-  // Essentially the same as the previous for indexing
+  // Essentially the same as the previous for an indexable space
+  // This is necessary to vectorize operations for indexable spaces
   template <typename Space = space, typename... pairs>
   constexpr std::enable_if_t<
       is_indexable<Space> && std::is_same_v<index_t<Space>, space>, space>
@@ -403,7 +428,6 @@ public:
   using space = typename uop::space;
 
   constexpr explicit negation(const expr_t val) : uop(val) {}
-  constexpr explicit negation(const expr_t &val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
     return -this->val_.deriv(deriv_id);
