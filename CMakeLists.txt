@@ -7,6 +7,8 @@ enable_testing()
 
 include_directories(include)
 
+set(CMAKE_CXX_CLANG_TIDY clang-tidy -checks=clang-analyzer-*,performance*,modernize*,clang-diagnostic*,bugprone*,clang-diagnostic-*,-modernize-use-trailing-return-type)
+
 add_library(type_tests OBJECT EXCLUDE_FROM_ALL tests/type_tests.cpp)
 set_target_properties(type_tests PROPERTIES COMPILE_FLAGS "-g -std=c++17 -Wall")
 

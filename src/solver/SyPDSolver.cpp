@@ -1,9 +1,8 @@
 
 #include "SyPDSolver.hpp"
 
+#include <cassert>
 #include <iostream>
-
-#include <assert.h>
 
 #include <petscmat.h>
 #include <petscvec.h>
@@ -17,11 +16,12 @@ KSP allocate_sym_pd_solver() {
 }
 
 Mat allocate_sym_pd_mat(unsigned int n, int max_nonzero) {
+  assert(n <= static_cast<unsigned int>(std::numeric_limits<int>::max()));
   if (max_nonzero == -1) {
-    max_nonzero = n;
+    max_nonzero = static_cast<int>(n);
   }
   Mat system;
-  MatCreateSeqAIJ(MPI_COMM_SELF, n, n, max_nonzero, NULL, &system);
+  MatCreateSeqAIJ(MPI_COMM_SELF, n, n, max_nonzero, nullptr, &system);
   return system;
 }
 
@@ -60,9 +60,9 @@ std::vector<double> SyPDSolver::operator()(std::vector<int> rows,
 
 double SyPDSolver::operator()(int i, int j, double val) {
   assert(i >= 0);
-  assert(i < num_eqns);
+  assert(static_cast<unsigned int>(i) < num_eqns);
   assert(j >= 0);
-  assert(j < num_eqns);
+  assert(static_cast<unsigned int>(j) < num_eqns);
   MatSetValues(system.get(), 1, &i, 1, &j, &val, INSERT_VALUES);
   return val;
 }
@@ -78,7 +78,7 @@ void SyPDSolver::operator()(const std::vector<int> &rows,
 std::vector<double> SyPDSolver::solve(std::vector<double> dependent_vars) {
   assert(dependent_vars.size() == num_eqns);
   std::vector<int> indices(num_eqns);
-  for (int i = 0; i < num_eqns; i++) {
+  for (unsigned int i = 0; i < num_eqns; i++) {
     indices[i] = i;
   }
   VecSetValues(dependent.get(), num_eqns, indices.data(), dependent_vars.data(),

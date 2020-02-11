@@ -4,6 +4,9 @@
 
 #ifdef HAS_PETSC
 
+#include <functional>
+#include <memory>
+
 #include <petsc.h>
 
 namespace petsc_helpers {
