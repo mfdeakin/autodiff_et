@@ -15,7 +15,7 @@ using rngAlg = std::mt19937_64;
 
 template <typename expr_t>
 void finitediff_test(const expr_t &e, const variable<double> v, const double xc,
-                     const std::string testname) {
+                     const std::string &testname) {
   constexpr double eps = std::numeric_limits<double>::epsilon();
   const double x0 = xc * (1.0 - 1e-6);
   const double x1 = xc * (1.0 + 1e-6);

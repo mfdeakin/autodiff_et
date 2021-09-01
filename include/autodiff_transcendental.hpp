@@ -65,22 +65,22 @@ template <typename expr_t_> class Exp;
 template <typename expr_t_> class Log;
 
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Sqrt<expr_t> sqrt(expr_t e) {
   return Sqrt<expr_t>(e);
 };
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Cbrt<expr_t> cbrt(expr_t e) {
   return Cbrt<expr_t>(e);
 };
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Exp<expr_t> exp(expr_t e) {
   return Exp<expr_t>(e);
 };
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Log<expr_t> log(expr_t e) {
   return Log<expr_t>(e);
 };
@@ -90,17 +90,17 @@ template <typename expr_t_> class Cos;
 template <typename expr_t_> class Tan;
 
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Sin<expr_t> sin(expr_t e) {
   return Sin(e);
 };
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Cos<expr_t> cos(expr_t e) {
   return Cos(e);
 };
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Tan<expr_t> tan(expr_t e) {
   return Tan(e);
 };
@@ -110,17 +110,17 @@ template <typename expr_t_> class Acos;
 template <typename expr_t_> class Atan;
 
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Asin<expr_t> asin(expr_t e) {
   return Asin<expr_t>(e);
 };
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Acos<expr_t> acos(expr_t e) {
   return Acos<expr_t>(e);
 };
 template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr, expr_t>, void>>
+                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Atan<expr_t> atan(expr_t e) {
   return Atan<expr_t>(e);
 };
@@ -128,8 +128,8 @@ static constexpr Atan<expr_t> atan(expr_t e) {
 template <typename lhs_expr_t_, typename rhs_expr_t_> class Pow;
 template <
     typename lhs_expr_t, typename rhs_expr_t,
-    typename enable_ = std::enable_if_t<std::is_base_of_v<expr, lhs_expr_t> ||
-                                            std::is_base_of_v<expr, rhs_expr_t>,
+    typename enable_ = std::enable_if_t<std::is_base_of_v<expr_type_internal, lhs_expr_t> ||
+                                            std::is_base_of_v<expr_type_internal, rhs_expr_t>,
                                         void>>
 static constexpr Pow<lhs_expr_t, rhs_expr_t> pow(lhs_expr_t lhs,
                                                  rhs_expr_t rhs) {
@@ -151,7 +151,7 @@ public:
   constexpr explicit Sqrt(expr_t val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return this->val_.deriv(deriv_id) / (space(2) * *this);
     } else {
       return space(0);
@@ -172,7 +172,7 @@ public:
   constexpr explicit Cbrt(expr_t val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return this->val_.deriv(deriv_id) / (space(3) * *this * *this);
     } else {
       return space(0);
@@ -193,7 +193,7 @@ public:
   constexpr explicit Exp(expr_t val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return *this * this->val_.deriv(deriv_id);
     } else {
       return space(0);
@@ -214,7 +214,7 @@ public:
   constexpr explicit Log(expr_t val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return this->val_.deriv(deriv_id) / this->val_;
     } else {
       return space(0);
@@ -237,7 +237,7 @@ public:
   constexpr explicit Sin(expr_t_ val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return Cos(this->val_) * this->val_.deriv(deriv_id);
     } else {
       return space(0);
@@ -258,7 +258,7 @@ public:
   constexpr explicit Cos(expr_t_ val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       // Clang weirdness requires the leading space(0)
       return space(0) - Sin(this->val_) * this->val_.deriv(deriv_id);
     } else {
@@ -280,7 +280,7 @@ public:
   constexpr explicit Tan(expr_t_ val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return this->val_.deriv(deriv_id) / (cos(this->val_) * cos(this->val_));
     } else {
       return space(0);
@@ -303,7 +303,7 @@ public:
   constexpr explicit Asin(expr_t_ val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return this->val_.deriv(deriv_id) /
              sqrt(space(1.0) - this->val_ * this->val_);
     } else {
@@ -325,7 +325,7 @@ public:
   constexpr explicit Acos(expr_t val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return -(this->val_.deriv(deriv_id) /
                sqrt(space(1.0) - this->val_ * this->val_));
     } else {
@@ -347,7 +347,7 @@ public:
   constexpr explicit Atan(expr_t val) : uop(val) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, expr_t>) {
       return this->val_.deriv(deriv_id) /
              (this->val_ * this->val_ + space(1.0));
     } else {
@@ -371,8 +371,8 @@ public:
   constexpr explicit Pow(lhs_expr_t base, rhs_expr_t exp) : bop(base, exp) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         const auto rhs_pow_term = this->rhs - space(1);
         return Log<lhs_expr_t>(this->lhs) * Pow(this->lhs, this->rhs) *
                    this->rhs.deriv(deriv_id) +
@@ -383,7 +383,7 @@ public:
         return Pow(this->lhs, this->rhs - space(1)) * this->rhs *
                this->lhs.deriv(deriv_id);
       }
-    } else if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    } else if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
       return std::log(this->lhs) * Pow(this->lhs, this->rhs) *
              this->rhs.deriv(deriv_id);
     } else {

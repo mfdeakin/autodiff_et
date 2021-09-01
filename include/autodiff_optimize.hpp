@@ -13,7 +13,7 @@ namespace auto_diff {
 
 template <typename expr_t>
 std::enable_if_t<
-    std::is_base_of_v<expr, expr_t>,
+    std::is_base_of_v<expr_type_internal, expr_t>,
     std::map<auto_diff::id_t, decltype(std::declval<expr_t>().deriv(0))>>
 gradient(const expr_t &e) {
   std::set<auto_diff::id_t> var_ids;
@@ -31,8 +31,8 @@ gradient(const expr_t &e) {
 // work, so we don't implement that case and error out instead
 template <typename expr_t>
 std::enable_if_t<
-    std::is_base_of_v<expr, expr_t> &&
-        std::is_base_of_v<expr, decltype(std::declval<expr_t>().deriv(0))>,
+    std::is_base_of_v<expr_type_internal, expr_t> &&
+        std::is_base_of_v<expr_type_internal, decltype(std::declval<expr_t>().deriv(0))>,
     std::map<std::pair<auto_diff::id_t, auto_diff::id_t>,
              decltype(std::declval<expr_t>().deriv(0).deriv(0))>>
 hessian(const expr_t &e) {
@@ -57,7 +57,7 @@ hessian(const expr_t &e) {
 // PETSc's conjugate gradient solver is used to initialize the line search
 // Note that we assume the Clairaut's theorem holds for these expressions
 template <typename expr_t_,
-          std::enable_if_t<std::is_base_of_v<expr, expr_t_>, int> = 0>
+          std::enable_if_t<std::is_base_of_v<expr_type_internal, expr_t_>, int> = 0>
 class CNLMin {
 public:
   using expr_t = expr_t_;
@@ -126,7 +126,7 @@ public:
                    const std::vector<space> &direction) const {
     double val = 0.0;
     for (size_t i = 0; i < f_grad_.size(); ++i) {
-      if constexpr (std::is_base_of_v<expr,
+      if constexpr (std::is_base_of_v<expr_type_internal,
                                       typename grad_map_type::mapped_type>) {
         val += f_grad_.at(i).eval(pos) * direction.at(i);
       } else {

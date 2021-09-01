@@ -41,8 +41,8 @@ using expr_domain = typename expr_domain_impl<expr_t>::space;
 
 // Everything that is an expression should define an alias called "space"
 // indicating the domain the expression acts on
-// Expressions should also publically inherit from expr
-class expr {};
+// Expressions should also publically inherit from expr_type_internal
+class expr_type_internal {};
 
 // This determines the space of the variables in the binary expression. If they
 // are not the same, compilation is halted
@@ -50,21 +50,21 @@ class expr {};
 // machinery required is more substantial than I'd like to deal with currently
 template <typename lhs_expr_t, typename rhs_expr_t,
           typename enabler =
-              std::enable_if_t<std::is_base_of_v<expr, lhs_expr_t> ||
-                                   std::is_base_of_v<expr, rhs_expr_t>,
+              std::enable_if_t<std::is_base_of_v<expr_type_internal, lhs_expr_t> ||
+                                   std::is_base_of_v<expr_type_internal, rhs_expr_t>,
                                void>>
 struct binary_expr_domain_impl {
   static_assert(
       std::is_same_v<expr_domain<lhs_expr_t>, expr_domain<rhs_expr_t>> ||
-          (!std::is_base_of_v<expr, lhs_expr_t> &&
+          (!std::is_base_of_v<expr_type_internal, lhs_expr_t> &&
            std::is_convertible_v<expr_domain<lhs_expr_t>,
                                  expr_domain<rhs_expr_t>>) ||
-          (!std::is_base_of_v<expr, rhs_expr_t> &&
+          (!std::is_base_of_v<expr_type_internal, rhs_expr_t> &&
            std::is_convertible_v<expr_domain<rhs_expr_t>,
                                  expr_domain<lhs_expr_t>>),
       "Invalid domains provided for the binary operands");
   using space =
-      std::conditional_t<std::is_base_of_v<expr, lhs_expr_t>,
+      std::conditional_t<std::is_base_of_v<expr_type_internal, lhs_expr_t>,
                          expr_domain<lhs_expr_t>, expr_domain<rhs_expr_t>>;
 };
 
@@ -94,7 +94,7 @@ template <typename domain>
 using index_t = typename is_indexable_impl<domain>::type;
 
 template <typename sub_expr_t>
-constexpr std::enable_if_t<std::is_base_of_v<expr, sub_expr_t>,
+constexpr std::enable_if_t<std::is_base_of_v<expr_type_internal, sub_expr_t>,
                            negation<sub_expr_t>>
 operator-(const sub_expr_t expr) {
   return negation<sub_expr_t>(expr);
@@ -109,8 +109,8 @@ constexpr bool is_valid_binary_expr =
     // specified arguments
     std::is_invocable_v<bin_op, expr_domain<lhs_expr_t>,
                         expr_domain<rhs_expr_t>> &&
-    (std::is_base_of_v<expr, lhs_expr_t> ||
-     std::is_base_of_v<expr, rhs_expr_t>);
+    (std::is_base_of_v<expr_type_internal, lhs_expr_t> ||
+     std::is_base_of_v<expr_type_internal, rhs_expr_t>);
 
 // Implement the basic binary expression operations for valid expressions
 // ie, if the operation is defined for the spaces of the expressions, and if at
@@ -148,7 +148,7 @@ operator/(const lhs_expr_t lhs, const rhs_expr_t rhs) {
 }
 
 // The primary component of an expression
-template <typename space_> class variable : public expr {
+template <typename space_> class variable : public expr_type_internal {
 public:
   using space = space_;
 
@@ -386,8 +386,8 @@ protected:
 
 // Unary operation base implementation
 template <typename expr_t_, typename uop_,
-          std::enable_if_t<std::is_base_of_v<expr, expr_t_>, int> = 0>
-class unary_op : public expr {
+          std::enable_if_t<std::is_base_of_v<expr_type_internal, expr_t_>, int> = 0>
+class unary_op : public expr_type_internal {
 public:
   using expr_t = expr_t_;
   using space = expr_domain<expr_t>;
@@ -461,7 +461,7 @@ public:
 template <typename lhs_expr_t_, typename rhs_expr_t_, typename bop_,
           std::enable_if_t<is_valid_binary_expr<lhs_expr_t_, rhs_expr_t_, bop_>,
                            int> = 0>
-class binary_op : public expr {
+class binary_op : public expr_type_internal {
 public:
   using lhs_expr_t = lhs_expr_t_;
   using rhs_expr_t = rhs_expr_t_;
@@ -476,25 +476,25 @@ public:
     // Using if constexpr from C++17 lets us ignore the fact that lhs or rhs may
     // not provide an eval method (or any methods at all), so long as the if
     // constexpr blocks entrance to that code path
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         return bop_()(this->lhs.eval(list...), this->rhs.eval(list...));
       } else {
         return bop_()(this->lhs.eval(list...), this->rhs);
       }
     } else {
       // Note that since this is a binary expression, at least one of the left
-      // or right sub-expressions must actually be expr and will provide
+      // or right sub-expressions must actually be expr_type_internal and will provide
       // an eval method
       // Since this branch only occurs if the left sub-expression is not an
-      // expr, the right one must be
+      // expr_type_internal, the right one must be
       return bop_()(this->lhs, this->rhs.eval(list...));
     }
   }
 
   constexpr space eval(const std::pair<id_t, space> head) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         return bop_()(this->lhs.eval(head), this->rhs.eval(head));
       } else {
         return bop_()(this->lhs.eval(head), this->rhs);
@@ -505,8 +505,8 @@ public:
   }
 
   constexpr space eval(const id_t eval_id, space v) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         return bop_()(this->lhs.eval(eval_id, v), this->rhs.eval(eval_id, v));
       } else {
         return bop_()(this->lhs.eval(eval_id, v), this->rhs);
@@ -517,8 +517,8 @@ public:
   }
 
   constexpr space eval(const std::vector<space> &values) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         return bop_()(this->lhs.eval(values), this->rhs.eval(values));
       } else {
         return bop_()(this->lhs.eval(values), this->rhs);
@@ -529,8 +529,8 @@ public:
   }
 
   template <typename... pairs> constexpr auto subs(pairs... list) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         return bop_()(this->lhs.subs(list...), this->rhs.eval(list...));
       } else {
         return bop_()(this->lhs.eval(list...), this->rhs);
@@ -541,8 +541,8 @@ public:
   }
 
   constexpr auto subs(const std::pair<id_t, space> head) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         return bop_()(this->lhs.subs(head), this->rhs.eval(head));
       } else {
         return bop_()(this->lhs.eval(head), this->rhs);
@@ -553,8 +553,8 @@ public:
   }
 
   constexpr auto subs(const id_t eval_id, const space v) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         return bop_()(this->lhs.subs(eval_id, v), this->rhs.eval(eval_id, v));
       } else {
         return bop_()(this->lhs.eval(eval_id, v), this->rhs);
@@ -565,10 +565,10 @@ public:
   }
 
   constexpr std::set<id_t> &expr_vars(std::set<id_t> &var_ids) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
       this->lhs.expr_vars(var_ids);
     }
-    if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
       this->rhs.expr_vars(var_ids);
     }
     return var_ids;
@@ -596,8 +596,8 @@ public:
       : bop(lhs_, rhs_) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
         return this->lhs.deriv(deriv_id) + this->rhs.deriv(deriv_id);
       } else {
@@ -625,8 +625,8 @@ public:
       : bop(lhs_, rhs_) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
         return this->lhs.deriv(deriv_id) - this->rhs.deriv(deriv_id);
       } else {
@@ -655,8 +655,8 @@ public:
       : bop(lhs_, rhs_) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
         return this->lhs.deriv(deriv_id) * this->rhs +
                this->lhs * this->rhs.deriv(deriv_id);
@@ -685,8 +685,8 @@ public:
       : bop(lhs_, rhs_) {}
 
   constexpr auto deriv(const id_t deriv_id) const {
-    if constexpr (std::is_base_of_v<expr, lhs_expr_t>) {
-      if constexpr (std::is_base_of_v<expr, rhs_expr_t>) {
+    if constexpr (std::is_base_of_v<expr_type_internal, lhs_expr_t>) {
+      if constexpr (std::is_base_of_v<expr_type_internal, rhs_expr_t>) {
         // Both the left and right expressions have non-zero derivatives
         return this->lhs.deriv(deriv_id) / this->rhs -
                this->lhs / (this->rhs * this->rhs) * this->rhs.deriv(deriv_id);
