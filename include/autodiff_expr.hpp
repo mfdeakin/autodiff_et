@@ -447,6 +447,9 @@ public:
   constexpr auto deriv(const id_t deriv_id) const {
     return -this->val_.deriv(deriv_id);
   }
+  constexpr space deriv(const variable<space> deriv_var) const {
+    return deriv(deriv_var.id());
+  }
 
   constexpr expr_t operator-() const { return this->val_; }
 };
@@ -611,6 +614,10 @@ public:
       return this->rhs.deriv(deriv_id);
     }
   }
+
+  constexpr space deriv(const variable<space> deriv_var) const {
+    return deriv(deriv_var.id());
+  }
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
@@ -639,6 +646,10 @@ public:
       // Only the right expression has a non-zero derivative
       return -this->rhs.deriv(deriv_id);
     }
+  }
+
+  constexpr space deriv(const variable<space> deriv_var) const {
+    return deriv(deriv_var.id());
   }
 };
 
@@ -671,6 +682,10 @@ public:
       return this->lhs * this->rhs.deriv(deriv_id);
     }
   }
+
+  constexpr space deriv(const variable<space> deriv_var) const {
+    return deriv(deriv_var.id());
+  }
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_>
@@ -700,6 +715,10 @@ public:
       // Only the right expression has a non-zero derivative
       return -this->lhs / (this->rhs * this->rhs) * this->rhs.deriv(deriv_id);
     }
+  }
+
+  constexpr space deriv(const variable<space> deriv_var) const {
+    return deriv(deriv_var.id());
   }
 };
 

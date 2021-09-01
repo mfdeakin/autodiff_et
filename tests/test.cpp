@@ -305,6 +305,19 @@ TEST(polynomial_grad, autodiff) {
   }
 }
 
+TEST(expr_wrapper, autodiff) {
+  constexpr variable<double> x(1), y(2);
+  constexpr double c = 432.043241;
+  constexpr auto e1 = x + c;
+  std::unique_ptr<internal::expr_wrapper_base<double>> wrapped = wrap_expr(e1);
+  std::unique_ptr<internal::expr_wrapper_base<double>> copied = wrapped->copy();
+  auto deriv = wrapped->deriv(x);
+  const double x_val = 1.0;
+  const double v = wrapped->eval(x, x_val);
+  EXPECT_EQ(e1.eval(x, x_val), v);
+  EXPECT_EQ(e1.eval(y, x_val), c);
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();

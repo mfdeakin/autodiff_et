@@ -7,7 +7,7 @@
 #include <map>
 #include <vector>
 
-#include "autodiff_internal.hpp"
+#include "autodiff_expr.hpp"
 
 namespace auto_diff {
 

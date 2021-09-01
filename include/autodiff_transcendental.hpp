@@ -2,7 +2,7 @@
 #ifndef AUTODIFF_TRANSCENDENTAL_HPP
 #define AUTODIFF_TRANSCENDENTAL_HPP
 
-#include "autodiff_internal.hpp"
+#include "autodiff_expr.hpp"
 
 #include <cmath>
 #include <functional>
