@@ -2,7 +2,7 @@
 #ifndef AUTODIFF_TRANSCENDENTAL_HPP
 #define AUTODIFF_TRANSCENDENTAL_HPP
 
-#include "autodiff.hpp"
+#include "autodiff_internal.hpp"
 
 #include <cmath>
 #include <functional>
@@ -59,28 +59,34 @@ template <typename space> struct pow_function {
 
 } // namespace transcendental
 
+namespace internal {
+
 template <typename expr_t_> class Sqrt;
 template <typename expr_t_> class Cbrt;
 template <typename expr_t_> class Exp;
 template <typename expr_t_> class Log;
 
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Sqrt<expr_t> sqrt(expr_t e) {
   return Sqrt<expr_t>(e);
 };
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Cbrt<expr_t> cbrt(expr_t e) {
   return Cbrt<expr_t>(e);
 };
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Exp<expr_t> exp(expr_t e) {
   return Exp<expr_t>(e);
 };
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Log<expr_t> log(expr_t e) {
   return Log<expr_t>(e);
 };
@@ -89,18 +95,21 @@ template <typename expr_t_> class Sin;
 template <typename expr_t_> class Cos;
 template <typename expr_t_> class Tan;
 
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Sin<expr_t> sin(expr_t e) {
   return Sin(e);
 };
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Cos<expr_t> cos(expr_t e) {
   return Cos(e);
 };
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Tan<expr_t> tan(expr_t e) {
   return Tan(e);
 };
@@ -109,28 +118,31 @@ template <typename expr_t_> class Asin;
 template <typename expr_t_> class Acos;
 template <typename expr_t_> class Atan;
 
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Asin<expr_t> asin(expr_t e) {
   return Asin<expr_t>(e);
 };
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Acos<expr_t> acos(expr_t e) {
   return Acos<expr_t>(e);
 };
-template <typename expr_t, typename enable_ = std::enable_if_t<
-                               std::is_base_of_v<expr_type_internal, expr_t>, void>>
+template <typename expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, expr_t>, void>>
 static constexpr Atan<expr_t> atan(expr_t e) {
   return Atan<expr_t>(e);
 };
 
 template <typename lhs_expr_t_, typename rhs_expr_t_> class Pow;
-template <
-    typename lhs_expr_t, typename rhs_expr_t,
-    typename enable_ = std::enable_if_t<std::is_base_of_v<expr_type_internal, lhs_expr_t> ||
-                                            std::is_base_of_v<expr_type_internal, rhs_expr_t>,
-                                        void>>
+template <typename lhs_expr_t, typename rhs_expr_t,
+          typename enable_ = std::enable_if_t<
+              std::is_base_of_v<expr_type_internal, lhs_expr_t> ||
+                  std::is_base_of_v<expr_type_internal, rhs_expr_t>,
+              void>>
 static constexpr Pow<lhs_expr_t, rhs_expr_t> pow(lhs_expr_t lhs,
                                                  rhs_expr_t rhs) {
   return Pow<lhs_expr_t, rhs_expr_t>(lhs, rhs);
@@ -392,6 +404,8 @@ public:
     }
   }
 };
+
+} // namespace internal
 
 } // namespace auto_diff
 

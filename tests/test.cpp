@@ -50,13 +50,16 @@ TEST(polynomial_eval, autodiff) {
   EXPECT_EQ(v, 12.0);
 
   constexpr double c = -20.0;
-  constexpr addition<
-      subtraction<addition<variable<double>,
-                           multiplication<variable<double>, variable<double>>>,
-                  double>,
+  constexpr internal::addition<
+      internal::subtraction<
+          internal::addition<
+              variable<double>,
+              internal::multiplication<variable<double>, variable<double>>>,
+          double>,
       variable<double>>
       x_quadratic = x + x * x - c + x;
-  const multiplication<variable<double>, variable<double>> xsqr = x * x;
+  const internal::multiplication<variable<double>, variable<double>> xsqr =
+      x * x;
   for (int i = 0; i < 1000; ++i) {
     const double rval = pdf(engine);
     EXPECT_EQ(x.eval(x.id(), rval), rval);
@@ -127,11 +130,11 @@ TEST(trig_eval, autodiff) {
                       std::pair<auto_diff::id_t, double>{s.id(), M_PI}),
               0.0, 4e-16);
   EXPECT_NEAR(st.eval(t.id(), M_PI, s.id(), M_PI), 0.0, 4e-16);
-  const Cos<variable<double>> ct = cos(t);
+  const internal::Cos<variable<double>> ct = cos(t);
   EXPECT_EQ(ct.eval(t.id(), 0.0), 1.0);
   EXPECT_NEAR(ct.eval(t.id(), M_PI / 2.0), 0.0, 1e-16);
   EXPECT_NEAR(ct.eval(t.id(), M_PI), -1.0, 1e-16);
-  const Tan<variable<double>> tt = tan(t);
+  const internal::Tan<variable<double>> tt = tan(t);
   EXPECT_EQ(tt.eval(t.id(), 0.0), 0.0);
   EXPECT_NEAR(tt.eval(t.id(), M_PI), 0.0, 2e-16);
 
@@ -226,8 +229,8 @@ TEST(pow_eval, autodiff) {
     EXPECT_EQ(p1.eval(s, base, t, exponent), std::pow(base, exponent));
     EXPECT_EQ(p1.deriv(s.id()).eval(s, base, t, exponent),
               exponent * std::pow(base, exponent - 1.0));
-		finitediff_test(p2, s, base, "x^3");
-		finitediff_test(p3, t, exponent, "3^x");
+    finitediff_test(p2, s, base, "x^3");
+    finitediff_test(p3, t, exponent, "3^x");
   }
 }
 
