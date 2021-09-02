@@ -23,6 +23,8 @@ public:
   using space = space_;
   using base = expr_wrapper_base<space>;
 
+  virtual ~expr_wrapper_base() = default;
+
   virtual std::unique_ptr<base> copy() const = 0;
   virtual std::unique_ptr<base> deriv(const id_t &var) const = 0;
   virtual std::unique_ptr<base> deriv(const variable<space> &var) const = 0;
@@ -38,8 +40,8 @@ public:
 template <typename expr_internal>
 class expr_wrapper : public expr_wrapper_base<expr_domain<expr_internal>> {
 public:
-  using base = expr_wrapper_base<expr_domain<expr_internal>>;
   using space = expr_domain<expr_internal>;
+  using base = expr_wrapper_base<space>;
 
   expr_wrapper() = delete;
   expr_wrapper(const expr_wrapper &e) : expr_(e.expr_) {}
@@ -52,11 +54,9 @@ public:
   virtual std::unique_ptr<base> deriv(const id_t &var) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       auto d = expr_.deriv(var);
-      auto ptr = new expr_wrapper<decltype(d)>(d);
-      return std::unique_ptr<base>(ptr);
+      return std::make_unique<expr_wrapper<decltype(d)>>(d);
     } else {
-      auto ptr = new expr_wrapper<space>(space(0));
-      return std::unique_ptr<base>(ptr);
+      return std::make_unique<expr_wrapper<space>>(space(0));
     }
   }
   virtual std::unique_ptr<base> deriv(const variable<space> &var) const {
