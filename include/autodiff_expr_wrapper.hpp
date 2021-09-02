@@ -26,13 +26,13 @@ public:
   virtual std::unique_ptr<base> copy() const = 0;
   virtual std::unique_ptr<base> deriv(const id_t &var) const = 0;
   virtual std::unique_ptr<base> deriv(const variable<space> &var) const = 0;
-  virtual constexpr space eval(const std::vector<space> &vars) const = 0;
+  virtual space eval(const std::vector<space> &vars) const = 0;
 
   // These are really only useful with single variable expressions; any unspecified variable is evaluated as space(0)
-  virtual constexpr space eval(const id_t &eval_id, const space &v) const = 0;
-  virtual constexpr space eval(const variable<space> &eval, const space &v) const = 0;
-  virtual constexpr space eval(const std::pair<id_t, space> vv) const = 0;
-  virtual constexpr space eval(const std::pair<variable<space>, space> vv) const = 0;
+  virtual space eval(const id_t &eval_id, const space &v) const = 0;
+  virtual space eval(const variable<space> &eval, const space &v) const = 0;
+  virtual space eval(const std::pair<id_t, space> vv) const = 0;
+  virtual space eval(const std::pair<variable<space>, space> vv) const = 0;
 };
 
 template <typename expr_internal>
@@ -63,35 +63,35 @@ public:
     return deriv(var.id());
   }
 
-  constexpr space eval(const id_t &eval_id, const space &v) const {
+  space eval(const id_t &eval_id, const space &v) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       return expr_.eval(eval_id, v);
     } else {
       return space(0);
     }
   };
-  constexpr space eval(const variable<space> &eval_id, const space &v) const {
+  space eval(const variable<space> &eval_id, const space &v) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       return expr_.eval(eval_id, v);
     } else {
       return space(0);
     }
   }
-  constexpr space eval(const std::pair<id_t, space> vv) const {
+  space eval(const std::pair<id_t, space> vv) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       return expr_.eval(vv.first, vv.second);
     } else {
       return space(0);
     }
   }
-  constexpr space eval(const std::pair<variable<space>, space> vv) const {
+  space eval(const std::pair<variable<space>, space> vv) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       return expr_.eval(vv.first, vv.second);
     } else {
       return space(0);
     }
   }
-  constexpr space eval(const std::vector<space> &values) const {
+  space eval(const std::vector<space> &values) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       return expr_.eval(values);
     } else {
