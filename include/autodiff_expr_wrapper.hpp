@@ -25,7 +25,7 @@ public:
 
   virtual ~expr_wrapper_base() = default;
 
-  virtual std::unique_ptr<base> copy() const = 0;
+  virtual std::unique_ptr<base> clone() const = 0;
   virtual std::unique_ptr<base> deriv(const id_t &var) const = 0;
   virtual std::unique_ptr<base> deriv(const variable<space> &var) const = 0;
   virtual space eval(const std::vector<space> &vars) const = 0;
@@ -35,6 +35,9 @@ public:
   virtual space eval(const variable<space> &eval, const space &v) const = 0;
   virtual space eval(const std::pair<id_t, space> vv) const = 0;
   virtual space eval(const std::pair<variable<space>, space> vv) const = 0;
+
+  virtual size_t num_vars() const = 0;
+  virtual std::vector<std::unique_ptr<base>> grad() const = 0;
 };
 
 template <typename expr_internal>
@@ -47,7 +50,7 @@ public:
   expr_wrapper(const expr_wrapper &e) : expr_(e.expr_) {}
   explicit expr_wrapper(const expr_internal &e) : expr_(e) {}
 
-  virtual std::unique_ptr<base> copy() const {
+  virtual std::unique_ptr<base> clone() const {
     return std::make_unique<expr_wrapper>(*this);
   }
 
@@ -98,6 +101,9 @@ public:
       return space(0);
     }
   }
+
+  virtual size_t num_vars() const { return 0; }
+  virtual std::vector<std::unique_ptr<base>> grad() const { return std::vector<std::unique_ptr<base>>(); }
 private:
   expr_internal expr_;
 };

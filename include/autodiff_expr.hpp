@@ -43,7 +43,7 @@ using expr_domain = typename expr_domain_impl<expr_t>::space;
 
 // Everything that is an expression should define an alias called "space"
 // indicating the domain the expression acts on
-// Expressions should also publically inherit from expr_type_internal
+// Expressions should also publicly inherit from expr_type_internal
 class expr_type_internal {};
 
 // This determines the space of the variables in the binary expression. If they
