@@ -1,6 +1,3 @@
-//
-// Created by michael on 8/31/21.
-//
 
 #ifndef AUTODIFF_EXPR_HPP
 #define AUTODIFF_EXPR_HPP
@@ -18,7 +15,7 @@ namespace internal {
 // the expression structure cannot be modified
 // unary operator support could be added, but binary operators are not possible
 template <typename space_>
-class expr_wrapper_base {
+class expr_wrapper_base : public expr_type_internal {
 public:
   using space = space_;
   using base = expr_wrapper_base<space>;

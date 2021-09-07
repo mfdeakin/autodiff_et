@@ -39,7 +39,7 @@ struct expr_domain_impl<expr_t, std::void_t<typename expr_t::space>> {
 };
 
 template <typename expr_t>
-using expr_domain = typename expr_domain_impl<expr_t>::space;
+using expr_domain = typename expr_domain_impl<std::remove_reference_t<expr_t>>::space;
 
 // Everything that is an expression should define an alias called "space"
 // indicating the domain the expression acts on
