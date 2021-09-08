@@ -26,8 +26,7 @@ static_assert(
     "binary_expr_domain not working");
 
 static_assert(is_indexable<double> == false, "is_indexable not working");
-static_assert(is_indexable<double[5]> == true,
-              "is_indexable not working");
+static_assert(is_indexable<double[5]> == true, "is_indexable not working");
 static_assert(is_indexable<std::array<double, 5>> == true,
               "is_indexable not working");
 static_assert(is_indexable<std::vector<double>> == true,

@@ -39,12 +39,19 @@ struct expr_domain_impl<expr_t, std::void_t<typename expr_t::space>> {
 };
 
 template <typename expr_t>
-using expr_domain = typename expr_domain_impl<std::remove_reference_t<expr_t>>::space;
+using expr_domain =
+    typename expr_domain_impl<std::remove_reference_t<expr_t>>::space;
 
 // Everything that is an expression should define an alias called "space"
 // indicating the domain the expression acts on
 // Expressions should also publicly inherit from expr_type_internal
 class expr_type_internal {};
+
+template <typename expr_t> struct is_expr {
+  static constexpr bool value = std::is_base_of_v<expr_type_internal, expr_t>;
+};
+
+template <typename expr_t> constexpr bool is_expr_v = is_expr<expr_t>::value;
 
 // This determines the space of the variables in the binary expression. If they
 // are not the same, compilation is halted
