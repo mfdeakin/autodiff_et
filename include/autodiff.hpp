@@ -4,19 +4,37 @@
 
 #include <memory>
 
+#include "autodiff_expr.hpp"
 #include "autodiff_expr_wrapper.hpp"
 
 namespace auto_diff {
 
 using id_t = internal::id_t;
+constexpr id_t unit_id = internal::unit_id;
 
-template <typename domain_t> using variable = internal::variable<domain_t>;
+using default_domain = double;
+
+template <typename domain_t = default_domain>
+using variable = internal::variable<domain_t>;
+static constexpr variable<default_domain> unit_var(unit_id);
 
 template <typename expr_t> using expr_domain = internal::expr_domain<expr_t>;
 
-// expr_wrapper provides the behaviors of evaluating the function and taking the
-// derivative of it wrt a specified variable
-template <typename domain_t>
+template <typename expr_t> using is_expr = internal::is_expr<expr_t>;
+template <typename expr_t>
+constexpr bool is_expr_v = internal::is_expr_v<expr_t>;
+
+template <typename expr_t> using expr_deriv = internal::expr_deriv<expr_t>;
+template <typename expr_t> using expr_deriv_t = internal::expr_deriv_t<expr_t>;
+
+template <typename expr_t>
+using cond_expr_deriv = internal::cond_expr_deriv<expr_t>;
+template <typename expr_t>
+using cond_expr_deriv_t = internal::cond_expr_deriv_t<expr_t>;
+
+// expr_wrapper provides the behaviors of evaluating the function and
+// taking the derivative of it wrt a specified variable
+template <typename domain_t = default_domain>
 using expr_wrapper = internal::expr_wrapper_base<domain_t>;
 
 template <typename expr_t,
