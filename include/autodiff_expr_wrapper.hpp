@@ -39,25 +39,25 @@ public:
 };
 
 template <typename expr_internal>
-class expr_wrapper : public expr_wrapper_base<expr_domain<expr_internal>> {
+class expr_wrapper_impl : public expr_wrapper_base<expr_domain<expr_internal>> {
 public:
   using space = expr_domain<expr_internal>;
   using base = expr_wrapper_base<space>;
 
-  expr_wrapper() = delete;
-  expr_wrapper(const expr_wrapper &e) : expr_(e.expr_) {}
-  explicit expr_wrapper(const expr_internal &e) : expr_(e) {}
+  expr_wrapper_impl() = delete;
+  expr_wrapper_impl(const expr_wrapper_impl &e) : expr_(e.expr_) {}
+  explicit expr_wrapper_impl(const expr_internal &e) : expr_(e) {}
 
   virtual std::unique_ptr<base> clone() const {
-    return std::make_unique<expr_wrapper>(*this);
+    return std::make_unique<expr_wrapper_impl>(*this);
   }
 
   virtual std::unique_ptr<base> deriv(const id_t &var) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       auto d = expr_.deriv(var);
-      return std::make_unique<expr_wrapper<decltype(d)>>(d);
+      return std::make_unique<expr_wrapper_impl<decltype(d)>>(d);
     } else {
-      return std::make_unique<expr_wrapper<space>>(space(0));
+      return std::make_unique<expr_wrapper_impl<space>>(space(0));
     }
   }
   virtual std::unique_ptr<base> deriv(const variable<space> &var) const {

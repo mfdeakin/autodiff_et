@@ -305,19 +305,20 @@ TEST(polynomial_grad, autodiff) {
   }
 }
 
-TEST(expr_wrapper, autodiff) {
+TEST(expr_wrapper_impl, autodiff) {
   constexpr variable<double> x(1), y(2);
   constexpr double c = 432.043241;
   constexpr auto e1 = x + c;
-  std::unique_ptr<expr_wrapper<double>> wrapped = wrap_expr(e1);
-  std::unique_ptr<expr_wrapper<double>> copied = wrapped->clone();
+  expr_wrapper<double> wrapped = wrap_expr(e1);
+  expr_wrapper<double> copied = wrapped.clone();
   static_assert(std::is_same_v<expr_domain<expr_wrapper<double>>, double>);
-  auto d = wrapped->deriv(x);
+  auto d = wrapped.deriv(x);
   const double x_val = 1.0;
-  const double v = wrapped->eval(x, x_val);
+  const double v = wrapped.eval(x, x_val);
   EXPECT_EQ(e1.eval(x, x_val), v);
   EXPECT_EQ(e1.eval(y, x_val), c);
-  deriv(*wrapped, x);
+  deriv(wrapped, x);
+  auto t = wrapped + copied;
 }
 
 int main(int argc, char **argv) {

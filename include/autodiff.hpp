@@ -32,16 +32,49 @@ using cond_expr_deriv = internal::cond_expr_deriv<expr_t>;
 template <typename expr_t>
 using cond_expr_deriv_t = internal::cond_expr_deriv_t<expr_t>;
 
-// expr_wrapper provides the behaviors of evaluating the function and
+// expr_wrapper_impl provides the behaviors of evaluating the function and
 // taking the derivative of it wrt a specified variable
+// Providing this container for the unique_ptr of the wrapped expression
+// enables constructing larger expressions out of statically defined expressions
 template <typename domain_t = default_domain>
-using expr_wrapper = internal::expr_wrapper_base<domain_t>;
+class expr_wrapper : public internal::expr_type_internal {
+public:
+  using space = domain_t;
+
+  expr_wrapper() = delete;
+  explicit expr_wrapper(std::unique_ptr<internal::expr_wrapper_base<space>> &&e)
+      : expr(std::move(e)) {}
+  expr_wrapper(const expr_wrapper &e) : expr(e.expr->clone()) {}
+  expr_wrapper(expr_wrapper &&e) : expr(std::move(e.expr)) {}
+  // No expectations to inherit from this class currently exist
+  ~expr_wrapper() = default;
+
+  expr_wrapper clone() const { return expr_wrapper(expr->clone()); }
+
+  space eval(const std::vector<space> &vals) const { return expr->eval(vals); }
+  space eval(const id_t var, const space &val) const {
+    return expr->eval(var, val);
+  }
+  space eval(const variable<space> var, const space &val) const {
+    return expr->eval(var, val);
+  }
+  expr_wrapper deriv(const id_t var) const {
+    return expr_wrapper(expr->deriv(var));
+  }
+  expr_wrapper deriv(const variable<space> var) const {
+    return expr_wrapper(expr->deriv(var));
+  }
+
+private:
+  std::unique_ptr<internal::expr_wrapper_base<space>> expr;
+};
 
 template <typename expr_t,
           typename enabler = std::enable_if_t<
               std::is_base_of_v<internal::expr_type_internal, expr_t>, void>>
-std::unique_ptr<expr_wrapper<expr_domain<expr_t>>> wrap_expr(const expr_t &e) {
-  return std::make_unique<internal::expr_wrapper<expr_t>>(e);
+expr_wrapper<expr_domain<expr_t>> wrap_expr(const expr_t &e) {
+  return expr_wrapper<expr_domain<expr_t>>(
+      std::make_unique<internal::expr_wrapper_impl<expr_t>>(e));
 }
 
 template <typename expr_t>

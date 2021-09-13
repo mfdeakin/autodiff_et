@@ -43,7 +43,8 @@ using expr_domain =
     typename expr_domain_impl<std::remove_reference_t<expr_t>>::space;
 
 // Everything that is an expression should define an alias called "space"
-// indicating the domain the expression acts on
+// indicating the domain the expression acts on, as well as providing eval
+// and deriv methods.
 // Expressions should also publicly inherit from expr_type_internal
 class expr_type_internal {};
 
