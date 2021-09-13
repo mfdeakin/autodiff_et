@@ -36,6 +36,9 @@ using cond_expr_deriv_t = internal::cond_expr_deriv_t<expr_t>;
 // taking the derivative of it wrt a specified variable
 // Providing this container for the unique_ptr of the wrapped expression
 // enables constructing larger expressions out of statically defined expressions
+// Note that using it to construct larger expressions will incur heap allocation
+// costs every time the copy constructor needs to be called; constructing
+// expressions this way will be expensive
 template <typename domain_t = default_domain>
 class expr_wrapper : public internal::expr_type_internal {
 public:
