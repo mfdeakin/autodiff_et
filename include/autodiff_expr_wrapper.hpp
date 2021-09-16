@@ -24,21 +24,22 @@ public:
 
   virtual std::unique_ptr<base> clone() const = 0;
   virtual std::unique_ptr<base> deriv(const id_t &var) const = 0;
-  virtual std::unique_ptr<base> deriv(const variable<space> &var) const = 0;
+  std::unique_ptr<base> deriv(const variable<space> &var) const { return deriv(var.id()); }
+
   virtual space eval(const std::vector<space> &vars) const = 0;
 
   // These are really only useful with single variable expressions; any
   // unspecified variable is evaluated as space(0)
   virtual space eval(const id_t &eval_id, const space &v) const = 0;
-  virtual space eval(const variable<space> &eval, const space &v) const = 0;
-  virtual space eval(const std::pair<id_t, space> vv) const = 0;
-  virtual space eval(const std::pair<variable<space>, space> vv) const = 0;
+  space eval(const variable<space> &var, const space &val) const { return eval(var.id(), val); }
+  space eval(const std::pair<id_t, space> vv) const { return eval(vv.first, vv.second); }
+  space eval(const std::pair<variable<space>, space> vv) const { return eval(vv.first.id(), vv.second); }
 
   virtual size_t num_vars() const = 0;
   virtual std::vector<std::unique_ptr<base>> grad() const = 0;
 };
 
-template <typename expr_internal>
+template <typename expr_internal, size_t max_derivs>
 class expr_wrapper_impl : public expr_wrapper_base<expr_domain<expr_internal>> {
 public:
   using space = expr_domain<expr_internal>;
@@ -53,15 +54,19 @@ public:
   }
 
   virtual std::unique_ptr<base> deriv(const id_t &var) const {
-    if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
-      auto d = expr_.deriv(var);
-      return std::make_unique<expr_wrapper_impl<decltype(d)>>(d);
+    if constexpr (max_derivs > 0) {
+      if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
+        auto d = expr_.deriv(var);
+        return std::make_unique<expr_wrapper_impl<decltype(d), max_derivs - 1>>(d);
+      } else {
+        // Because this is a constant, we don't have to worry about the derivatives not terminating
+        return std::make_unique<expr_wrapper_impl<space, 1>>(space(0));
+      }
+    } else if constexpr (std::numeric_limits<space>::has_signaling_NaN) {
+      return std::make_unique<expr_wrapper_impl<space, 1>>(std::numeric_limits<space>::signaling_NaN());
     } else {
-      return std::make_unique<expr_wrapper_impl<space>>(space(0));
+      return std::make_unique<expr_wrapper_impl<space, 1>>(space(0));
     }
-  }
-  virtual std::unique_ptr<base> deriv(const variable<space> &var) const {
-    return deriv(var.id());
   }
 
   space eval(const id_t &eval_id, const space &v) const {
@@ -71,27 +76,6 @@ public:
       return space(0);
     }
   };
-  space eval(const variable<space> &eval_id, const space &v) const {
-    if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
-      return expr_.eval(eval_id, v);
-    } else {
-      return space(0);
-    }
-  }
-  space eval(const std::pair<id_t, space> vv) const {
-    if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
-      return expr_.eval(vv.first, vv.second);
-    } else {
-      return space(0);
-    }
-  }
-  space eval(const std::pair<variable<space>, space> vv) const {
-    if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
-      return expr_.eval(vv.first, vv.second);
-    } else {
-      return space(0);
-    }
-  }
   space eval(const std::vector<space> &values) const {
     if constexpr (std::is_base_of_v<expr_type_internal, expr_internal>) {
       return expr_.eval(values);

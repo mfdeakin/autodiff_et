@@ -319,6 +319,7 @@ TEST(expr_wrapper_impl, autodiff) {
   EXPECT_EQ(e1.eval(y, x_val), c);
   deriv(wrapped, x);
   auto t = wrapped + copied;
+  auto wrapped_exp = wrap_expr(exp(x));
 }
 
 int main(int argc, char **argv) {

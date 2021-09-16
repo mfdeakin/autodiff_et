@@ -72,12 +72,13 @@ private:
   std::unique_ptr<internal::expr_wrapper_base<space>> expr;
 };
 
-template <typename expr_t,
+// Note that setting max_derivs too high can make compilation extraordinarily slow
+template <typename expr_t, size_t max_derivs = 2,
           typename enabler = std::enable_if_t<
               std::is_base_of_v<internal::expr_type_internal, expr_t>, void>>
 expr_wrapper<expr_domain<expr_t>> wrap_expr(const expr_t &e) {
   return expr_wrapper<expr_domain<expr_t>>(
-      std::make_unique<internal::expr_wrapper_impl<expr_t>>(e));
+      std::make_unique<internal::expr_wrapper_impl<expr_t, max_derivs>>(e));
 }
 
 template <typename expr_t>
